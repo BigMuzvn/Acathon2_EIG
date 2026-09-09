@@ -18,13 +18,13 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
   const getMotorBadge = (motorisation) => {
     switch (motorisation.toLowerCase()) {
       case 'electrique':
-        return <span className="badge badge-electric"><Zap className="w-3 h-3 inline mr-1" /> Électrique</span>;
+        return <span className="badge badge-electric"><Zap className="w-3 h-3 inline" /> Électrique</span>;
       case 'essence':
-        return <span className="badge badge-essence"><Flame className="w-3 h-3 inline mr-1" /> Essence</span>;
+        return <span className="badge badge-essence"><Flame className="w-3 h-3 inline" /> Essence</span>;
       case 'hybride':
-        return <span className="badge badge-hybride"><Zap className="w-3 h-3 inline mr-1" /> Hybride</span>;
+        return <span className="badge badge-hybride"><Zap className="w-3 h-3 inline" /> Hybride</span>;
       case 'diesel':
-        return <span className="badge badge-diesel"><Flame className="w-3 h-3 inline mr-1" /> Diesel</span>;
+        return <span className="badge badge-diesel"><Flame className="w-3 h-3 inline" /> Diesel</span>;
       default:
         return <span className="badge bg-slate-700 text-slate-300">{motorisation}</span>;
     }
@@ -34,9 +34,9 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
     return (
       <div className="glass-card p-6 mb-8">
         <div className="h-6 w-48 skeleton mb-4"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(n => (
-            <div key={n} className="h-36 skeleton rounded-xl"></div>
+            <div key={n} className="h-44 skeleton rounded-xl"></div>
           ))}
         </div>
       </div>
@@ -44,22 +44,25 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
   }
 
   return (
-    <section className="glass-card p-6 mb-8 border border-white/10 shadow-2xl">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-3">
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 text-sm font-extrabold border border-blue-500/40 shrink-0">
-              1
-            </span>
-            <span>Sélection des véhicules à comparer</span>
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Sélectionnez 1 ou plusieurs véhicules pour lancer la simulation comparative.
-          </p>
+    <section className="glass-card p-6 md:p-8 mb-8 border border-white/10 shadow-2xl">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 text-base font-extrabold flex items-center justify-center border border-blue-500/40 shrink-0">
+            1
+          </div>
+          <div>
+            <h2 className="text-xl md:text-2xl font-extrabold text-white tracking-tight">
+              Sélection des véhicules à comparer
+            </h2>
+            <p className="text-xs md:text-sm text-slate-400 mt-0.5">
+              Cliquez sur les cartes pour ajouter ou retirer un véhicule de la comparaison.
+            </p>
+          </div>
         </div>
 
         {/* Counter Badge */}
-        <div className="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-xl border border-white/10 shrink-0">
+        <div className="flex items-center gap-2 bg-slate-900/90 px-4 py-2 rounded-xl border border-white/10 shrink-0">
           <span className="text-xs text-slate-400 font-medium">Sélectionnés :</span>
           <span className="text-sm font-bold text-blue-400 font-mono">
             {selectedIds.length} / {vehicles.length}
@@ -67,22 +70,23 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
         </div>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 mb-6">
-        {/* Search */}
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+      {/* Controls Bar: Search & Motorisation Filters */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-8">
+        
+        {/* Search Field */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <input
             type="text"
             placeholder="Rechercher marque, modèle..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="form-input pl-10 text-sm"
+            className="form-input pl-10 text-sm py-2.5"
           />
         </div>
 
-        {/* Motorisation Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+        {/* Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
           {[
             { id: 'all', label: 'Tous' },
             { id: 'electrique', label: '⚡ Électrique' },
@@ -93,26 +97,27 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
             <button
               key={btn.id}
               onClick={() => setFilterMotorisation(btn.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
                 filterMotorisation === btn.id
-                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/30'
-                  : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 border border-white/5'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'bg-slate-800/80 text-slate-400 hover:text-white border border-white/10'
               }`}
             >
               {btn.label}
             </button>
           ))}
         </div>
+
       </div>
 
-      {/* Vehicles Grid */}
+      {/* Vehicle Grid */}
       {filteredVehicles.length === 0 ? (
-        <div className="text-center py-10 border border-dashed border-slate-800 rounded-xl">
+        <div className="text-center py-12 border border-dashed border-slate-800 rounded-2xl bg-slate-900/40">
           <Info className="w-8 h-8 text-slate-500 mx-auto mb-2" />
           <p className="text-slate-400 text-sm">Aucun véhicule ne correspond à vos critères de recherche.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredVehicles.map(veh => {
             const isSelected = selectedIds.includes(veh.id);
 
@@ -120,38 +125,47 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
               <div
                 key={veh.id}
                 onClick={() => onToggleVehicle(veh.id)}
-                className={`glass-card glass-card-interactive p-4 relative overflow-hidden transition-all duration-200 ${
+                className={`glass-card glass-card-interactive p-5 relative flex flex-col justify-between transition-all duration-200 ${
                   isSelected ? 'glass-card-selected' : 'hover:border-slate-700'
                 }`}
               >
-                {/* Selection Checkmark */}
-                <div className={`absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                  isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/40' : 'bg-slate-800/80 border border-white/10 text-transparent'
+                {/* Checkbox Indicator */}
+                <div className={`absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                  isSelected 
+                    ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/40 scale-100' 
+                    : 'bg-slate-800/80 border border-white/15 text-transparent scale-90'
                 }`}>
                   <Check className="w-3.5 h-3.5 stroke-[3]" />
                 </div>
 
-                <div className="flex items-start justify-between mb-3 pr-8">
-                  <div>
-                    <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold block">{veh.marque}</span>
-                    <h3 className="text-lg font-bold text-white tracking-tight leading-tight">{veh.modele}</h3>
-                  </div>
+                {/* Card Title & Brand */}
+                <div className="mb-4 pr-8">
+                  <span className="text-[11px] uppercase tracking-widest text-slate-400 font-bold block mb-1">
+                    {veh.marque}
+                  </span>
+                  <h3 className="text-lg font-extrabold text-white leading-snug">
+                    {veh.modele}
+                  </h3>
                 </div>
 
-                <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/5">
-                  <div>{getMotorBadge(veh.motorisation)}</div>
+                {/* Motorisation Badge & Price */}
+                <div className="flex items-center justify-between py-3 my-2 border-t border-b border-white/10 gap-2">
+                  <div>
+                    {getMotorBadge(veh.motorisation)}
+                  </div>
+
                   <div className="text-right">
-                    <span className="text-xs text-slate-400 block">Prix catalogue :</span>
-                    <span className="text-sm font-bold text-slate-200 font-mono">
+                    <span className="text-[11px] text-slate-400 block font-medium">Prix catalogue</span>
+                    <span className="text-sm font-bold text-slate-100 font-mono">
                       {veh.prix_achat ? veh.prix_achat.toLocaleString('fr-FR') + ' €' : 'N/A'}
                     </span>
                   </div>
                 </div>
 
-                {/* Additional metrics */}
-                <div className="mt-3 text-xs text-slate-400 flex items-center justify-between bg-slate-950/60 px-3 py-2 rounded-lg border border-white/5">
-                  <span>Conso : <strong className="text-slate-200 font-mono">{veh.consommation_moyenne}</strong> {veh.motorisation === 'electrique' ? 'kWh/100km' : 'L/100km'}</span>
-                  <span>Année : <strong className="text-slate-200 font-mono">{veh.annee}</strong></span>
+                {/* Specs Footer */}
+                <div className="flex items-center justify-between text-xs text-slate-300 pt-2 px-3 py-2 bg-slate-950/60 rounded-xl border border-white/5 font-mono">
+                  <span>Conso : <strong className="text-white">{veh.consommation_moyenne}</strong> {veh.motorisation === 'electrique' ? 'kWh/100km' : 'L/100km'}</span>
+                  <span>Année : <strong className="text-white">{veh.annee}</strong></span>
                 </div>
               </div>
             );
