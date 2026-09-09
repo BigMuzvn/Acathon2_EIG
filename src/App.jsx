@@ -4,6 +4,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 import Navbar from './components/Navbar';
+import HeroBanner from './components/HeroBanner';
 import VehicleSelector from './components/VehicleSelector';
 import SimulationControls from './components/SimulationControls';
 import RecommendationCard from './components/RecommendationCard';
@@ -13,7 +14,7 @@ import ErrorAlert from './components/ErrorAlert';
 import A11yView from './components/A11yView';
 
 import { getVehicules, runSimulation } from './services/api';
-import { Car, RefreshCw, Sparkles, HeartHandshake, ShieldAlert } from 'lucide-react';
+import { CarFront, RefreshCw } from 'lucide-react';
 
 const STORAGE_KEY = 'autocompare_tco_state';
 
@@ -64,7 +65,6 @@ export default function App() {
       setVehicles(res.data || []);
       setIsMock(res.isMock);
 
-      // If saved selectedIds are empty or invalid, pick defaults
       if (res.data && res.data.length > 0 && selectedIds.length === 0) {
         setSelectedIds([res.data[0].id, res.data[1]?.id].filter(Boolean));
       }
@@ -102,13 +102,12 @@ export default function App() {
 
         setSimulationResults(res.data?.resultats || []);
         
-        // Trigger celebratory confetti if results calculated cleanly
         if (res.data?.resultats?.length > 1) {
           confetti({
-            particleCount: 25,
-            spread: 50,
+            particleCount: 30,
+            spread: 60,
             origin: { y: 0.8 },
-            colors: ['#3b82f6', '#10b981', '#f59e0b']
+            colors: ['#d97706', '#10b981', '#06b6d4']
           });
         }
       } catch (err) {
@@ -120,11 +119,10 @@ export default function App() {
       }
     };
 
-    const timer = setTimeout(executeSimulation, 250); // slight debounce for smooth sliders
+    const timer = setTimeout(executeSimulation, 250);
     return () => clearTimeout(timer);
   }, [selectedIds, params]);
 
-  // Toggle vehicle selection
   const handleToggleVehicle = (id) => {
     setSelectedIds(prev => {
       if (prev.includes(id)) {
@@ -135,7 +133,6 @@ export default function App() {
     });
   };
 
-  // Apply Quick Preset
   const handleApplyPreset = (km, years) => {
     setParams(prev => ({
       ...prev,
@@ -144,7 +141,6 @@ export default function App() {
     }));
   };
 
-  // Export PDF Report
   const handleExportPDF = async () => {
     if (!reportRef.current) return;
     setIsExporting(true);
@@ -153,7 +149,7 @@ export default function App() {
       const element = reportRef.current;
       const canvas = await html2canvas(element, {
         scale: 2,
-        backgroundColor: '#090d16',
+        backgroundColor: '#070c18',
         useCORS: true,
         logging: false
       });
@@ -182,7 +178,7 @@ export default function App() {
   return (
     <div className="min-h-screen pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       
-      {/* Top Header */}
+      {/* Navbar */}
       <Navbar
         onExport={handleExportPDF}
         isExporting={isExporting}
@@ -191,6 +187,11 @@ export default function App() {
         isMock={isMock}
         onReloadVehicles={loadVehiclesData}
         vehicleCount={selectedIds.length}
+      />
+
+      {/* Shakuro Luxury Hero Banner */}
+      <HeroBanner
+        vehicleCount={vehicles.length}
       />
 
       {/* Error Alert Display */}
@@ -229,8 +230,8 @@ export default function App() {
           <>
             {/* Loading Shimmer indicator */}
             {loadingSimulation && (
-              <div className="glass-card p-6 text-center text-slate-400 text-sm flex items-center justify-center gap-3">
-                <RefreshCw className="w-5 h-5 animate-spin text-blue-400" />
+              <div className="glass-card p-6 text-center text-slate-300 text-sm flex items-center justify-center gap-3">
+                <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
                 <span>Calcul de la simulation en cours...</span>
               </div>
             )}
@@ -262,12 +263,12 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-16 pt-8 border-t border-white/10 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+      <footer className="mt-16 pt-8 border-t border-white/10 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
         <div className="flex items-center gap-2">
-          <Car className="w-4 h-4 text-blue-500" />
-          <span>AutoCompare TCO — Projet Hackathon Développeurs API</span>
+          <CarFront className="w-4 h-4 text-amber-400" />
+          <span className="font-semibold text-slate-300">AutoCompare TCO — Performance & Luxury UI (Shakuro Inspired)</span>
         </div>
-        <p>API Endpoint: <code className="text-slate-400 font-mono">https://carapi.app/api</code></p>
+        <p>API Endpoint: <code className="text-amber-400 font-mono">https://carapi.app/api</code></p>
       </footer>
 
     </div>
