@@ -5,32 +5,36 @@
 @tailwind utilities;
 
 :root {
-  --bg-dark: #090d16;
-  --bg-card: rgba(18, 24, 38, 0.75);
-  --bg-card-hover: rgba(28, 36, 56, 0.85);
-  --border-card: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(59, 130, 246, 0.3);
+  /* Color Palette: Midnight Blue, Copper/Brown, Pure White */
+  --bg-dark: #070c18;
+  --bg-card: rgba(15, 23, 42, 0.85);
+  --bg-card-hover: rgba(26, 38, 66, 0.9);
+  --border-card: rgba(255, 255, 255, 0.1);
+  --border-glow: rgba(217, 119, 6, 0.4);
 
-  --accent-primary: #3b82f6;
-  --accent-primary-hover: #2563eb;
+  /* Primary Copper / Brown Accent */
+  --accent-copper: #d97706;
+  --accent-copper-hover: #b45309;
+  --accent-copper-light: #f59e0b;
+  --accent-copper-glow: rgba(217, 119, 6, 0.25);
+
+  /* Secondary Midnight Blue & Cyan Accents */
+  --accent-navy: #1e293b;
+  --accent-blue: #3b82f6;
   --accent-emerald: #10b981;
-  --accent-amber: #f59e0b;
-  --accent-rose: #ef4444;
-  --accent-purple: #8b5cf6;
-  --accent-cyan: #06b6d4;
 
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
+  /* Typography */
+  --text-main: #ffffff;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
 
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-heading: 'Outfit', 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
-  --radius-xl: 24px;
+  /* Easing curves (Emil Kowalski Design Engineering) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 * {
@@ -45,9 +49,9 @@ body {
   font-family: var(--font-sans);
   min-height: 100vh;
   background-image: 
-    radial-gradient(circle at 15% 15%, rgba(59, 130, 246, 0.12) 0%, transparent 40%),
-    radial-gradient(circle at 85% 25%, rgba(16, 185, 129, 0.08) 0%, transparent 35%),
-    radial-gradient(circle at 50% 80%, rgba(139, 92, 246, 0.07) 0%, transparent 45%);
+    radial-gradient(circle at 10% 10%, rgba(217, 119, 6, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 90% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 35%),
+    radial-gradient(circle at 50% 85%, rgba(16, 185, 129, 0.06) 0%, transparent 45%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
@@ -61,19 +65,19 @@ h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-mono);
 }
 
-/* Glassmorphism Card Utility */
+/* Glassmorphism Cards with Copper Border Highlights */
 .glass-card {
   background: var(--bg-card);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-card);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 20px;
+  box-shadow: 0 12px 35px -10px rgba(0, 0, 0, 0.6);
+  transition: transform 180ms var(--ease-out), border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
 }
 
 .glass-card:hover {
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .glass-card-interactive {
@@ -83,16 +87,16 @@ h1, h2, h3, h4, h5, h6 {
 .glass-card-interactive:hover {
   transform: translateY(-2px);
   border-color: var(--border-glow);
-  box-shadow: 0 12px 35px -8px rgba(59, 130, 246, 0.2);
+  box-shadow: 0 14px 40px -10px var(--accent-copper-glow);
 }
 
 .glass-card-selected {
-  border-color: var(--accent-primary);
-  background: rgba(37, 99, 235, 0.15);
-  box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);
+  border-color: var(--accent-copper);
+  background: rgba(217, 119, 6, 0.12);
+  box-shadow: 0 0 30px rgba(217, 119, 6, 0.25);
 }
 
-/* Buttons & Inputs */
+/* Buttons with Press Scaling (Emil Kowalski Active Feedback) */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -100,24 +104,28 @@ h1, h2, h3, h4, h5, h6 {
   gap: 8px;
   padding: 10px 18px;
   font-weight: 600;
-  font-size: 0.9rem;
-  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  border-radius: 12px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform 160ms var(--ease-out), background-color 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
   font-family: var(--font-sans);
+  user-select: none;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
   color: white;
-  box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 14px rgba(217, 119, 6, 0.35);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 6px 20px rgba(217, 119, 6, 0.5);
 }
 
 .btn-primary:disabled {
@@ -127,14 +135,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-main);
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .btn-emerald {
@@ -148,26 +156,27 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
 }
 
+/* Inputs & Form Controls */
 .form-input, .form-select {
   width: 100%;
   padding: 10px 14px;
-  background: rgba(15, 23, 42, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-md);
+  background: rgba(11, 19, 38, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
   color: var(--text-main);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .form-input:focus, .form-select:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+  border-color: var(--accent-copper);
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.25);
 }
 
 /* Range Slider Styling */
 input[type="range"] {
-  accent-color: var(--accent-primary);
+  accent-color: var(--accent-copper);
   cursor: pointer;
 }
 
@@ -178,53 +187,52 @@ input[type="range"] {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(7, 12, 24, 0.8);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.18);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(217, 119, 6, 0.5);
 }
 
-/* Badges */
+/* Badges (NO EMOJIS, Clean Vector Badges) */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   padding: 4px 10px;
   border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .badge-electric {
   background: rgba(16, 185, 129, 0.15);
   color: #34d399;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 .badge-essence {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(217, 119, 6, 0.15);
   color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  border: 1px solid rgba(217, 119, 6, 0.35);
 }
 
 .badge-hybride {
   background: rgba(6, 182, 212, 0.15);
   color: #22d3ee;
-  border: 1px solid rgba(6, 182, 212, 0.3);
+  border: 1px solid rgba(6, 182, 212, 0.35);
 }
 
 .badge-diesel {
   background: rgba(139, 92, 246, 0.15);
-  color: #a78bfa;
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #c084fc;
+  border: 1px solid rgba(139, 92, 246, 0.35);
 }
 
 /* Print CSS */

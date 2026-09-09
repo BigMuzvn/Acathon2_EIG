@@ -13,8 +13,8 @@ export default function ComparisonTable({ results, vehicles }) {
       
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 text-base font-extrabold flex items-center justify-center border border-blue-500/40 shrink-0">
+        <div className="flex items-center gap-3.5">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 text-base font-extrabold flex items-center justify-center border border-amber-500/40 shrink-0 font-mono">
             4
           </div>
           <div>
@@ -31,7 +31,7 @@ export default function ComparisonTable({ results, vehicles }) {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[700px]">
           <thead>
-            <tr className="border-b border-white/10 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-900/80">
+            <tr className="border-b border-white/10 text-xs font-bold uppercase tracking-wider text-slate-400 bg-slate-900/90">
               <th className="py-4 px-4 rounded-tl-xl">Véhicule</th>
               <th className="py-4 px-4">Motorisation</th>
               <th className="py-4 px-4 text-right">Coût Total (TCO)</th>
@@ -58,7 +58,7 @@ export default function ComparisonTable({ results, vehicles }) {
                 <tr
                   key={res.vehicule_id}
                   className={`hover:bg-slate-800/40 transition-colors ${
-                    isBestTotal ? 'bg-emerald-500/10' : ''
+                    isBestTotal ? 'bg-amber-500/10' : ''
                   }`}
                 >
                   {/* Vehicle info */}
@@ -68,11 +68,11 @@ export default function ComparisonTable({ results, vehicles }) {
                         <span>{veh.marque} {veh.modele}</span>
                         {isBestTotal && (
                           <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-500/40 font-bold">
-                            ★ Meilleur TCO
+                            Meilleur TCO
                           </span>
                         )}
                       </div>
-                      <span className="text-xs text-slate-400 block mt-0.5">
+                      <span className="text-xs text-slate-400 block mt-0.5 font-mono">
                         Prix : {veh.prix_achat ? veh.prix_achat.toLocaleString('fr-FR') + ' €' : 'N/A'}
                       </span>
                     </div>
@@ -91,21 +91,21 @@ export default function ComparisonTable({ results, vehicles }) {
 
                   {/* Total Cost */}
                   <td className="py-4 px-4 text-right">
-                    <span className={`font-mono font-bold text-base ${isBestTotal ? 'text-emerald-400' : 'text-white'}`}>
+                    <span className={`font-mono font-bold text-base ${isBestTotal ? 'text-amber-400' : 'text-white'}`}>
                       {res.cout_total.toLocaleString('fr-FR')} €
                     </span>
                   </td>
 
                   {/* Monthly Cost */}
                   <td className="py-4 px-4 text-right">
-                    <span className={`font-mono font-bold ${isBestMonthly ? 'text-emerald-400' : 'text-slate-200'}`}>
+                    <span className={`font-mono font-bold ${isBestMonthly ? 'text-amber-400' : 'text-slate-200'}`}>
                       {res.cout_mensuel_moyen.toLocaleString('fr-FR')} € / mois
                     </span>
                   </td>
 
                   {/* Cost per KM */}
                   <td className="py-4 px-4 text-right">
-                    <span className={`font-mono font-bold ${isBestKm ? 'text-emerald-400' : 'text-slate-200'}`}>
+                    <span className={`font-mono font-bold ${isBestKm ? 'text-amber-400' : 'text-slate-200'}`}>
                       {res.cout_par_km} € / km
                     </span>
                   </td>
