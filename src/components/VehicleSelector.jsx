@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, Zap, Flame, Shield, Search, Info, Plus } from 'lucide-react';
+import { Check, Zap, Flame, Search, Info } from 'lucide-react';
 
 export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle, loading }) {
   const [filterMotorisation, setFilterMotorisation] = useState('all');
@@ -18,13 +18,13 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
   const getMotorBadge = (motorisation) => {
     switch (motorisation.toLowerCase()) {
       case 'electrique':
-        return <span className="badge badge-electric"><Zap className="w-3 h-3 inline" /> Électrique</span>;
+        return <span className="badge badge-electric"><Zap className="w-3 h-3 inline mr-1" /> Électrique</span>;
       case 'essence':
-        return <span className="badge badge-essence"><Flame className="w-3 h-3 inline" /> Essence</span>;
+        return <span className="badge badge-essence"><Flame className="w-3 h-3 inline mr-1" /> Essence</span>;
       case 'hybride':
-        return <span className="badge badge-hybride"><Zap className="w-3 h-3 inline" /> Hybride</span>;
+        return <span className="badge badge-hybride"><Zap className="w-3 h-3 inline mr-1" /> Hybride</span>;
       case 'diesel':
-        return <span className="badge badge-diesel"><Flame className="w-3 h-3 inline" /> Diesel</span>;
+        return <span className="badge badge-diesel"><Flame className="w-3 h-3 inline mr-1" /> Diesel</span>;
       default:
         return <span className="badge bg-slate-700 text-slate-300">{motorisation}</span>;
     }
@@ -47,9 +47,11 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
     <section className="glass-card p-6 mb-8 border border-white/10 shadow-2xl">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 text-sm font-extrabold border border-blue-500/40">1</span>
-            Sélection des véhicules à comparer
+          <h2 className="text-xl font-bold text-white flex items-center gap-3">
+            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-blue-500/20 text-blue-400 text-sm font-extrabold border border-blue-500/40 shrink-0">
+              1
+            </span>
+            <span>Sélection des véhicules à comparer</span>
           </h2>
           <p className="text-xs text-slate-400 mt-1">
             Sélectionnez 1 ou plusieurs véhicules pour lancer la simulation comparative.
@@ -57,8 +59,8 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
         </div>
 
         {/* Counter Badge */}
-        <div className="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-xl border border-white/10">
-          <span className="text-xs text-slate-400 font-medium">Sélectionnés:</span>
+        <div className="flex items-center gap-2 bg-slate-900/80 px-4 py-2 rounded-xl border border-white/10 shrink-0">
+          <span className="text-xs text-slate-400 font-medium">Sélectionnés :</span>
           <span className="text-sm font-bold text-blue-400 font-mono">
             {selectedIds.length} / {vehicles.length}
           </span>
@@ -131,25 +133,25 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
 
                 <div className="flex items-start justify-between mb-3 pr-8">
                   <div>
-                    <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold">{veh.marque}</span>
-                    <h3 className="text-lg font-bold text-white tracking-tight">{veh.modele}</h3>
+                    <span className="text-xs uppercase tracking-wider text-slate-400 font-semibold block">{veh.marque}</span>
+                    <h3 className="text-lg font-bold text-white tracking-tight leading-tight">{veh.modele}</h3>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between mt-2 pt-3 border-t border-white/5">
                   <div>{getMotorBadge(veh.motorisation)}</div>
                   <div className="text-right">
-                    <span className="text-xs text-slate-400 block">Prix catalogue</span>
+                    <span className="text-xs text-slate-400 block">Prix catalogue :</span>
                     <span className="text-sm font-bold text-slate-200 font-mono">
-                      {veh.prix_achat.toLocaleString('fr-FR')} €
+                      {veh.prix_achat ? veh.prix_achat.toLocaleString('fr-FR') + ' €' : 'N/A'}
                     </span>
                   </div>
                 </div>
 
                 {/* Additional metrics */}
-                <div className="mt-3 text-xs text-slate-400 flex items-center justify-between bg-slate-950/40 px-2.5 py-1.5 rounded-lg border border-white/5">
-                  <span>Conso: <strong className="text-slate-200 font-mono">{veh.consommation_moyenne}</strong> {veh.motorisation === 'electrique' ? 'kWh/100km' : 'L/100km'}</span>
-                  <span>Année: <strong className="text-slate-200 font-mono">{veh.annee}</strong></span>
+                <div className="mt-3 text-xs text-slate-400 flex items-center justify-between bg-slate-950/60 px-3 py-2 rounded-lg border border-white/5">
+                  <span>Conso : <strong className="text-slate-200 font-mono">{veh.consommation_moyenne}</strong> {veh.motorisation === 'electrique' ? 'kWh/100km' : 'L/100km'}</span>
+                  <span>Année : <strong className="text-slate-200 font-mono">{veh.annee}</strong></span>
                 </div>
               </div>
             );
