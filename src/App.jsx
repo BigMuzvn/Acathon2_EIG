@@ -107,7 +107,7 @@ export default function App() {
             particleCount: 30,
             spread: 60,
             origin: { y: 0.8 },
-            colors: ['#d97706', '#10b981', '#06b6d4']
+            colors: ['#0f172a', '#059669', '#c2410c']
           });
         }
       } catch (err) {
@@ -149,7 +149,7 @@ export default function App() {
       const element = reportRef.current;
       const canvas = await html2canvas(element, {
         scale: 2,
-        backgroundColor: '#070c18',
+        backgroundColor: '#f8fafc',
         useCORS: true,
         logging: false
       });
@@ -176,7 +176,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <div className="min-h-screen pt-6 md:pt-10 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
       
       {/* Navbar */}
       <Navbar
@@ -189,7 +189,7 @@ export default function App() {
         vehicleCount={selectedIds.length}
       />
 
-      {/* Shakuro Luxury Hero Banner */}
+      {/* Hero Banner */}
       <HeroBanner
         vehicleCount={vehicles.length}
       />
@@ -230,8 +230,8 @@ export default function App() {
           <>
             {/* Loading Shimmer indicator */}
             {loadingSimulation && (
-              <div className="glass-card p-6 text-center text-slate-300 text-sm flex items-center justify-center gap-3">
-                <RefreshCw className="w-5 h-5 animate-spin text-amber-400" />
+              <div className="glass-card p-6 text-center text-slate-700 text-sm flex items-center justify-center gap-3">
+                <RefreshCw className="w-5 h-5 animate-spin text-slate-800" />
                 <span>Calcul de la simulation en cours...</span>
               </div>
             )}
@@ -263,12 +263,12 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-16 pt-8 border-t border-white/10 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
+      <footer className="mt-16 pt-8 border-t border-slate-200 text-center text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-4 no-print">
         <div className="flex items-center gap-2">
-          <CarFront className="w-4 h-4 text-amber-400" />
-          <span className="font-semibold text-slate-300">AutoCompare TCO — Performance & Luxury UI (Shakuro Inspired)</span>
+          <CarFront className="w-4 h-4 text-slate-800" />
+          <span className="font-semibold text-slate-700">AutoCompare TCO — Projet Hackathon 2025</span>
         </div>
-        <p>API Endpoint: <code className="text-amber-400 font-mono">https://carapi.app/api</code></p>
+        <p>API Endpoint: <code className="text-slate-700 font-mono">https://carapi.app/api</code></p>
       </footer>
 
     </div>
