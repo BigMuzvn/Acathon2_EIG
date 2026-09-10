@@ -1,14 +1,14 @@
 # Préparer la démonstration Vercel
 
-Le dépôt est prêt pour une démonstration Vercel. Cette procédure s’applique à la création du projet et aux déploiements suivants ; l’URL publique validée figure dans le README après publication.
+La démonstration de production est publiée sur [autocompare-eig.vercel.app](https://autocompare-eig.vercel.app). Le projet Vercel `autocompare-eig` est connecté au dépôt GitHub : chaque push sur `main` déclenche un nouveau déploiement de production.
 
 ## Configuration préparée dans le dépôt
 
-`vercel.json` déclare Vite, `npm ci`, `npm run build`, la sortie `dist` et une durée maximale de 60 secondes pour les fonctions. L’entrée `api/[...path].js` importe les modules serveur. Les appels du navigateur utilisent `/api` sur la même origine : il faut déployer le dépôt complet, pas uniquement `dist`.
+`vercel.json` déclare Vite, `npm ci`, `npm run build`, la sortie `dist` et une durée maximale de 60 secondes pour les fonctions. Les entrées `api/` importent les modules serveur ; une entrée spécifique traite les fiches véhicule. Les appels du navigateur utilisent `/api` sur la même origine : il faut déployer le dépôt complet, pas uniquement `dist`.
 
 Variables : `VITE_API_BASE_URL=/api` (également la valeur par défaut). Les identifiants `CARAPI_API_TOKEN` et `CARAPI_API_SECRET` sont facultatifs pour le jeu public 2015–2020 et doivent rester dans l’environnement serveur. En local, les placer dans `.env.local`, jamais dans une variable `VITE_`.
 
-Les limites applicatives sont actives par défaut et configurables. Elles sont locales à chaque instance. Pour une protection commune à toutes les instances, configurer une règle de limitation des routes `/api/*` dans le pare-feu du projet Vercel, en tenant compte du trafic attendu. Cette configuration d’hébergement ne peut pas être validée avant la création du projet.
+Les limites applicatives sont actives par défaut et configurables. Elles sont locales à chaque instance. Une règle de limitation commune à toutes les instances peut être ajoutée aux routes `/api/*` dans le pare-feu du projet Vercel selon le trafic attendu.
 
 ## Vérifier localement la version compilée
 

@@ -2,6 +2,10 @@
 
 Comparateur automobile réalisé pour le hackathon : sélectionner des véhicules, adapter son usage et comparer leur coût total de possession (TCO).
 
+## Démonstration en ligne
+
+La version de démonstration est disponible sur [autocompare-eig.vercel.app](https://autocompare-eig.vercel.app). Elle utilise les routes CarAPI réelles, les calculs TCO du projet et le même code que la branche `main`.
+
 ## Démarrer
 
 ```bash
@@ -183,6 +187,6 @@ Le runner démarre Vite si nécessaire et utilise une API simulée déterministe
 npm run preview
 ```
 
-Affiche la compilation de production avec les mêmes routes serveur. Pour Vercel : framework Vite, commande `npm run build`, dossier de sortie `dist`, `VITE_API_BASE_URL=/api`. La fonction `api/[...path].js` réutilise `server/api.js` et `server/carapi.js`. Les identifiants facultatifs `CARAPI_API_TOKEN` et `CARAPI_API_SECRET` sont à définir dans l’environnement serveur. Un hébergement purement statique de `dist` ne suffit pas : il faut conserver ces routes serveur. Aucun déploiement n’est effectué par les tests locaux.
+Affiche la compilation de production avec les mêmes routes serveur. Pour Vercel : framework Vite, commande `npm run build`, dossier de sortie `dist`, `VITE_API_BASE_URL=/api`. Les fonctions `api/` réutilisent `server/api.js` et `server/carapi.js`, y compris une entrée dédiée pour les fiches véhicule. Les identifiants facultatifs `CARAPI_API_TOKEN` et `CARAPI_API_SECRET` sont à définir dans l’environnement serveur. Un hébergement purement statique de `dist` ne suffit pas : il faut conserver ces routes serveur. Aucun déploiement n’est effectué par les tests locaux.
 
 Stack : React 19, Vite 8, Tailwind CSS 3, CSS, Recharts, Lucide, jsPDF et Playwright.
