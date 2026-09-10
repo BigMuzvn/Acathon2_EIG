@@ -4,7 +4,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { createCarApiClient } from '../server/carapi.js';
 import { createApiHandler } from '../server/api.js';
-import { VEHICLE_PHOTOS, vehiclePhoto } from '../shared/vehiclePhotos.js';
+import { VEHICLE_ILLUSTRATIONS, VEHICLE_PHOTOS, vehicleIllustration, vehiclePhoto } from '../shared/vehiclePhotos.js';
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status });
 
 test('suggestions use documented v2 routes, year and exact brand; requests share the cache', async () => {
@@ -66,4 +66,12 @@ test('photos match reviewed model/year combinations, never fuzzy names or unrela
     assert.ok(photo.source.startsWith('https://commons.wikimedia.org/wiki/File:'));
     assert.ok(photo.author && photo.license && photo.licenseUrl);
   }
+});
+
+test('CarAPI vehicles receive clearly generic local illustrations when no verified photo exists', () => {
+  const illustration = vehicleIllustration({ source: 'carapi', marque: 'Acura', modele_base: 'MDX', modele: 'MDX Base', description: '4dr SUV', motorisation: 'essence' });
+  assert.equal(illustration?.key, 'crossover');
+  assert.ok(illustration?.src.startsWith('/images/'));
+  assert.equal(vehicleIllustration({ source: 'local', motorisation: 'essence' }), null);
+  assert.equal(VEHICLE_ILLUSTRATIONS.length, 6);
 });

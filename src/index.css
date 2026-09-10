@@ -33,7 +33,9 @@
 .page-jump label { font-weight: 650; }
 .page-jump > span { color: #647078; }
 .vehicle-media > img.verified-photo { object-fit: contain; }
+.vehicle-media > img.illustrative-photo { object-fit: cover; }
 .vehicle-photo-label { position: absolute; bottom: 8px; left: 8px; padding: 4px 7px; background: #ffffffeb; border-radius: 4px; color: #33462e; font-size: 9px; }
+.vehicle-photo-label.illustration-label { background: #f4f0e8eb; color: #695b42; }
 .photo-credits { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 14px; font-size: 11px; color: #596653; }
 .photo-credits summary { cursor: pointer; font-weight: 650; }
 .photo-credits p, .photo-credits li { margin-top: 10px; line-height: 1.8; }

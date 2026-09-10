@@ -3,15 +3,17 @@ import { Check, Zap, Fuel, BatteryCharging, Search, Plus, CarFront, X, ArrowDown
 import { CarApiBrowser, CarApiPagination } from './CarApiBrowser';
 import { useRef } from 'react';
 import { vehicleLabel } from '../../shared/vehicleLabel.js';
-import { vehiclePhoto } from '../../shared/vehiclePhotos.js';
+import { vehicleIllustration, vehiclePhoto } from '../../shared/vehiclePhotos.js';
 const MOTORS = { electrique: { label: 'Électrique', Icon: Zap }, essence: { label: 'Essence', Icon: Fuel }, hybride: { label: 'Hybride', Icon: BatteryCharging }, diesel: { label: 'Diesel', Icon: Fuel } };
 const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const STUDIO_IMAGES = { veh_001: 'clio', veh_002: 'megane', veh_003: 'e208', veh_004: 'yaris', veh_005: 'model3', veh_006: 'golf' };
 function VehicleImage({ vehicle, isMock }) {
   const [failedSource, setFailedSource] = useState(null);
   const photo = !isMock && vehiclePhoto(vehicle);
-  const source = isMock && STUDIO_IMAGES[vehicle.id] ? `/images/${STUDIO_IMAGES[vehicle.id]}.webp` : photo?.src || vehicle.image_url;
-  return source && failedSource !== source ? <><img className={photo ? 'verified-photo' : undefined} src={source} alt={photo ? `${photo.title} ; finition et couleur indicatives` : ''} loading="lazy" decoding="async" width="512" height="330" onError={() => setFailedSource(source)} />{photo && <span className="vehicle-photo-label">Photo du modèle · 2018</span>}</> : <div className="vehicle-image-placeholder"><CarFront size={64} strokeWidth={1} /><span>Visuel indisponible</span></div>;
+  const illustration = !isMock && !photo ? vehicleIllustration(vehicle) : null;
+  const source = isMock && STUDIO_IMAGES[vehicle.id] ? `/images/${STUDIO_IMAGES[vehicle.id]}.webp` : photo?.src || illustration?.src || vehicle.image_url;
+  const className = photo ? 'verified-photo' : illustration ? 'illustrative-photo' : undefined;
+  return source && failedSource !== source ? <><img className={className} src={source} alt={photo ? `${photo.title} ; finition et couleur indicatives` : illustration ? `Illustration fictive générique ; catégorie ${illustration.label}` : ''} loading="lazy" decoding="async" width="512" height="330" onError={() => setFailedSource(source)} />{photo && <span className="vehicle-photo-label">Photo du modèle · 2018</span>}{illustration && <span className="vehicle-photo-label illustration-label">Illustration fictive · {illustration.label}</span>}</> : <div className="vehicle-image-placeholder"><CarFront size={64} strokeWidth={1} /><span>Visuel indisponible</span></div>;
 }
 export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle, loading, isMock, meta, catalogQuery, onBrowse }) {
   const [filter, setFilter] = useState('all');
@@ -51,7 +53,7 @@ export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle
       </button>;
     })}</div> : <div className="empty-catalog"><Search size={29} /><h3>{vehicles.length ? 'Aucun modèle trouvé' : 'Le catalogue est vide'}</h3><p>{vehicles.length ? 'Essayez une autre recherche ou une autre motorisation.' : 'Rechargez le catalogue pour retrouver les véhicules disponibles.'}</p>{vehicles.length > 0 && <button className="button button-outline" onClick={() => { setQuery(''); setFilter('all'); }}>Afficher tous les véhicules</button>}</div>}
     {meta && <CarApiPagination meta={meta} loading={loading} query={catalogQuery} onBrowse={browse} />}
-    <div className="catalog-caption"><span>{isMock ? 'Illustrations générées, non contractuelles.' : 'Photos documentées ajoutées progressivement · finition et couleur peuvent différer.'}</span><span>{filtered.length} véhicule{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}</span></div>
+    <div className="catalog-caption"><span>{isMock ? 'Illustrations générées, non contractuelles.' : 'Photos documentées ou illustrations fictives génériques · finition et couleur peuvent différer.'}</span><span>{filtered.length} véhicule{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}</span></div>
     {photos.length > 0 && <details className="photo-credits"><summary>Sources et crédits des photos ({photos.length})</summary><p>Photos de modèles de 2018, utilisées pour illustrer les générations 2018–2020. Elles ne représentent pas nécessairement la finition, les équipements ou la couleur sélectionnés. Miniatures Wikimedia, sans retouche, hébergées localement.</p><ul>{photos.map(photo => <li key={photo.src}><a href={photo.source} target="_blank" rel="noreferrer">{photo.title}</a> — {photo.author} · <a href={photo.licenseUrl} target="_blank" rel="noreferrer">{photo.license}</a></li>)}</ul></details>}
   </section>;
 }
