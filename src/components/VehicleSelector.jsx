@@ -1,197 +1,57 @@
-import React, { useState } from 'react';
-import { Check, Zap, Fuel, BatteryFull, CarFront, Search, Info } from 'lucide-react';
-
-export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle, loading }) {
-  const [filterMotorisation, setFilterMotorisation] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const filteredVehicles = vehicles.filter(v => {
-    const matchesMotor = filterMotorisation === 'all' || v.motorisation.toLowerCase() === filterMotorisation.toLowerCase();
-    const query = searchQuery.toLowerCase();
-    const matchesSearch = !searchQuery || 
-      v.marque.toLowerCase().includes(query) || 
-      v.modele.toLowerCase().includes(query) ||
-      v.motorisation.toLowerCase().includes(query);
-    return matchesMotor && matchesSearch;
-  });
-
-  const getMotorBadge = (motorisation) => {
-    switch (motorisation.toLowerCase()) {
-      case 'electrique':
-        return <span className="badge badge-electric"><Zap className="w-3.5 h-3.5" /> Électrique</span>;
-      case 'essence':
-        return <span className="badge badge-essence"><Fuel className="w-3.5 h-3.5" /> Essence</span>;
-      case 'hybride':
-        return <span className="badge badge-hybride"><BatteryFull className="w-3.5 h-3.5" /> Hybride</span>;
-      case 'diesel':
-        return <span className="badge badge-diesel"><CarFront className="w-3.5 h-3.5" /> Diesel</span>;
-      default:
-        return <span className="badge bg-slate-100 text-slate-800 border border-slate-300">{motorisation}</span>;
+﻿import { useState } from 'react';
+import { Check, Zap, Fuel, BatteryCharging, Search, Plus, CarFront, X, ArrowDownWideNarrow } from 'lucide-react';
+import { CarApiBrowser, CarApiPagination } from './CarApiBrowser';
+import { useRef } from 'react';
+import { vehicleLabel } from '../../shared/vehicleLabel.js';
+import { vehiclePhoto } from '../../shared/vehiclePhotos.js';
+const MOTORS = { electrique: { label: 'Électrique', Icon: Zap }, essence: { label: 'Essence', Icon: Fuel }, hybride: { label: 'Hybride', Icon: BatteryCharging }, diesel: { label: 'Diesel', Icon: Fuel } };
+const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const STUDIO_IMAGES = { veh_001: 'clio', veh_002: 'megane', veh_003: 'e208', veh_004: 'yaris', veh_005: 'model3', veh_006: 'golf' };
+function VehicleImage({ vehicle, isMock }) {
+  const [failedSource, setFailedSource] = useState(null);
+  const photo = !isMock && vehiclePhoto(vehicle);
+  const source = isMock && STUDIO_IMAGES[vehicle.id] ? `/images/${STUDIO_IMAGES[vehicle.id]}.webp` : photo?.src || vehicle.image_url;
+  return source && failedSource !== source ? <><img className={photo ? 'verified-photo' : undefined} src={source} alt={photo ? `${photo.title} ; finition et couleur indicatives` : ''} loading="lazy" decoding="async" width="512" height="330" onError={() => setFailedSource(source)} />{photo && <span className="vehicle-photo-label">Photo du modèle · 2018</span>}</> : <div className="vehicle-image-placeholder"><CarFront size={64} strokeWidth={1} /><span>Visuel indisponible</span></div>;
+}
+export default function VehicleSelector({ vehicles, selectedIds, onToggleVehicle, loading, isMock, meta, catalogQuery, onBrowse }) {
+  const [filter, setFilter] = useState('all');
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState('default');
+  const heading = useRef(null);
+  const browse = nextQuery => {
+    if (['year', 'make', 'model'].some(key => String(nextQuery[key] || '') !== String(catalogQuery?.[key] || (key === 'year' ? meta?.year : '') || ''))) {
+      setQuery(''); setFilter('all');
     }
+    // Move before loading changes the page layout; keep the current cards in place.
+    heading.current?.focus({ preventScroll: true });
+    heading.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    onBrowse(nextQuery);
   };
-
-  if (loading) {
-    return (
-      <div className="glass-card p-6 mb-8">
-        <div className="h-6 w-48 skeleton mb-4"></div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map(n => (
-            <div key={n} className="h-52 skeleton rounded-2xl"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <section className="glass-card p-6 md:p-8 mb-8 border-slate-200 shadow-xs">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
-        <div className="flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white text-sm font-black flex items-center justify-center shrink-0 font-mono shadow-xs">
-            1
-          </div>
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-              Sélectionnez les véhicules à comparer
-            </h2>
-            <p className="text-xs md:text-sm text-slate-600 mt-0.5">
-              Cliquez sur une carte pour ajouter ou retirer un modèle du comparateur.
-            </p>
-          </div>
-        </div>
-
-        {/* Counter Badge */}
-        <div className="flex items-center gap-2 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 shrink-0">
-          <span className="text-xs text-slate-600 font-medium">Sélectionnés :</span>
-          <span className="text-sm font-extrabold text-slate-900 font-mono">
-            {selectedIds.length} / {vehicles.length}
-          </span>
-        </div>
-      </div>
-
-      {/* Filter & Search Controls */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-8">
-        
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Rechercher marque, modèle..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="form-input pl-10 text-sm py-2.5 bg-white border-slate-300"
-          />
-        </div>
-
-        {/* Motorisation Pills (Lucide SVG, ZERO Emojis) */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0">
-          {[
-            { id: 'all', label: 'Tous', icon: null },
-            { id: 'electrique', label: 'Électrique', icon: <Zap className="w-3.5 h-3.5 inline mr-1" /> },
-            { id: 'essence', label: 'Essence', icon: <Fuel className="w-3.5 h-3.5 inline mr-1" /> },
-            { id: 'hybride', label: 'Hybride', icon: <BatteryFull className="w-3.5 h-3.5 inline mr-1" /> },
-            { id: 'diesel', label: 'Diesel', icon: <CarFront className="w-3.5 h-3.5 inline mr-1" /> }
-          ].map(btn => (
-            <button
-              key={btn.id}
-              onClick={() => setFilterMotorisation(btn.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-150 active:scale-95 flex items-center ${
-                filterMotorisation === btn.id
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
-              }`}
-            >
-              {btn.icon}
-              <span>{btn.label}</span>
-            </button>
-          ))}
-        </div>
-
-      </div>
-
-      {/* Vehicle Cards Grid */}
-      {filteredVehicles.length === 0 ? (
-        <div className="text-center py-12 border border-dashed border-slate-300 rounded-2xl bg-slate-50">
-          <Info className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-          <p className="text-slate-600 text-sm">Aucun véhicule ne correspond à vos critères de recherche.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredVehicles.map(veh => {
-            const isSelected = selectedIds.includes(veh.id);
-
-            return (
-              <div
-                key={veh.id}
-                onClick={() => onToggleVehicle(veh.id)}
-                className={`glass-card glass-card-interactive group relative flex flex-col justify-between overflow-hidden rounded-2xl border active:scale-[0.98] transition-all duration-150 ${
-                  isSelected 
-                    ? 'glass-card-selected' 
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                {/* Image Banner */}
-                {veh.image_url && (
-                  <div className="h-36 w-full relative overflow-hidden bg-slate-100 border-b border-slate-100">
-                    <img 
-                      src={veh.image_url} 
-                      alt={`${veh.marque} ${veh.modele}`} 
-                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                    />
-                    
-                    {/* Top Motor Badge */}
-                    <div className="absolute top-3 left-3">
-                      {getMotorBadge(veh.motorisation)}
-                    </div>
-                  </div>
-                )}
-
-                {/* Checkbox Indicator */}
-                <div className={`absolute top-3 right-3 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-                  isSelected 
-                    ? 'bg-slate-900 text-white shadow-sm scale-100' 
-                    : 'bg-white/90 border border-slate-300 text-transparent scale-90'
-                }`}>
-                  <Check className="w-4 h-4 stroke-[3]" />
-                </div>
-
-                {/* Card Content Body */}
-                <div className="p-5 flex-1 flex flex-col justify-between">
-                  <div>
-                    {!veh.image_url && (
-                      <div className="mb-2">
-                        {getMotorBadge(veh.motorisation)}
-                      </div>
-                    )}
-                    <span className="text-[11px] uppercase tracking-widest text-slate-500 font-extrabold block mb-0.5">
-                      {veh.marque}
-                    </span>
-                    <h3 className="text-lg font-bold text-slate-900 leading-snug">
-                      {veh.modele}
-                    </h3>
-                  </div>
-
-                  <div className="flex items-center justify-between py-3 my-3 border-t border-b border-slate-100 gap-2">
-                    <span className="text-xs text-slate-500 font-medium">Prix d'achat :</span>
-                    <span className="text-base font-extrabold text-slate-900 font-mono">
-                      {veh.prix_achat ? veh.prix_achat.toLocaleString('fr-FR') + ' €' : 'N/A'}
-                    </span>
-                  </div>
-
-                  {/* Specs Footer */}
-                  <div className="flex items-center justify-between text-xs text-slate-600 pt-1.5 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 font-mono">
-                    <span>Conso : <strong className="text-slate-900">{veh.consommation_moyenne}</strong> {veh.motorisation === 'electrique' ? 'kWh/100km' : 'L/100km'}</span>
-                    <span>Année : <strong className="text-slate-900">{veh.annee}</strong></span>
-                  </div>
-                </div>
-
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </section>
-  );
+  const filtered = vehicles.filter(v => (filter === 'all' || normalize(v.motorisation) === filter) && normalize(`${v.marque} ${v.modele} ${v.motorisation}`).includes(normalize(query.trim())));
+  if (sort === 'price') filtered.sort((a, b) => (a.prix_achat ?? Infinity) - (b.prix_achat ?? Infinity));
+  if (sort === 'brand') filtered.sort((a, b) => `${a.marque} ${a.modele}`.localeCompare(`${b.marque} ${b.modele}`, 'fr'));
+  const photos = [...new Set(filtered.map(vehiclePhoto).filter(Boolean))];
+  return <section className="catalog-panel" aria-labelledby="catalog-title" aria-busy={loading}>
+    <div className="catalog-heading"><div><div className="eyebrow catalog-eyebrow"><span className="section-step">01</span> LE POINT DE DÉPART</div><h2 id="catalog-title" ref={heading} tabIndex={-1}>Lesquelles vous font envie ?</h2><p>Sélectionnez les véhicules que vous souhaitez comparer.</p></div><span className="catalog-count">{vehicles.length} {meta ? 'finitions sur cette page' : 'modèles'}</span></div>
+    {meta && <CarApiBrowser meta={meta} loading={loading} onBrowse={browse} />}
+    {!!meta?.unavailable?.length && <div className="catalog-partial" role="status"><p>{meta.unavailable.length} fiche{meta.unavailable.length > 1 ? 's' : ''} indisponible{meta.unavailable.length > 1 ? 's' : ''} sur cette page. Les autres véhicules restent consultables.</p><button className="button button-outline" disabled={loading} onClick={() => onBrowse({ ...catalogQuery, year: String(meta.year), page: String(meta.page) })}>Réessayer les fiches</button></div>}
+    <div className={meta ? 'page-filter-panel' : undefined}>
+    {meta && <div className="page-filter-heading"><div><span>SUR CETTE PAGE UNIQUEMENT</span><h3>Affiner les {vehicles.length} finitions affichées</h3></div><p>{filtered.length} sur {vehicles.length} correspondent à vos filtres. Aucun autre véhicule du catalogue n’est recherché ici.</p></div>}
+    <div className="catalog-toolbar"><div className="search-field"><Search size={17} /><input aria-label={meta ? 'Filtrer les véhicules de cette page' : 'Rechercher un véhicule'} type="search" placeholder={meta ? 'Chercher dans cette page…' : 'Une marque, un modèle…'} value={query} onChange={e => setQuery(e.target.value)} />{query && <button onClick={() => setQuery('')} aria-label="Effacer la recherche"><X size={15} /></button>}</div><div className="sort-field"><ArrowDownWideNarrow size={16} /><select aria-label="Trier les véhicules" value={sort} onChange={e => setSort(e.target.value)}><option value="default">{meta ? 'Ordre de la page' : 'Notre sélection'}</option><option value="price">Prix croissant</option><option value="brand">Marque : A à Z</option></select></div></div>
+    <div className="motor-filters" role="group" aria-label="Filtrer par motorisation"><button aria-pressed={filter === 'all'} className={filter === 'all' ? 'is-active' : ''} onClick={() => setFilter('all')}>Tous les véhicules</button>{Object.entries(MOTORS).map(([id, { label, Icon }]) => <button key={id} aria-pressed={filter === id} className={filter === id ? 'is-active' : ''} onClick={() => setFilter(id)}><Icon size={14} />{label}</button>)}</div>
+    </div>
+    {loading && <span className="sr-only" role="status">Chargement des véhicules…</span>}
+    {loading && !vehicles.length ? <div className="vehicle-grid" aria-label="Chargement des véhicules">{[0, 1, 2, 3, 4, 5].map(n => <div className="vehicle-skeleton" key={n}><div className="skeleton-image" /><div className="skeleton-line" /><div className="skeleton-line short" /></div>)}</div> : filtered.length ? <div className="vehicle-grid">{filtered.map(vehicle => {
+      const selected = selectedIds.includes(vehicle.id);
+      const motorId = normalize(vehicle.motorisation);
+      const { label, Icon } = MOTORS[motorId] || { label: vehicle.motorisation, Icon: CarFront };
+      return <button key={vehicle.id} className={`vehicle-card ${selected ? 'is-selected' : ''}`} disabled={loading || vehicle.simulable === false} title={vehicle.description || undefined} aria-pressed={selected} aria-label={`${selected ? 'Retirer' : 'Ajouter'} ${vehicleLabel(vehicle)} ${selected ? 'du' : 'au'} comparatif${vehicle.indisponibilite ? ` : ${vehicle.indisponibilite}` : ''}`} onClick={() => onToggleVehicle(vehicle.id)}>
+        <span className="vehicle-media"><VehicleImage vehicle={vehicle} isMock={isMock} /><span className={`motor-badge motor-${motorId}`}><Icon size={12} />{label}</span><span className="vehicle-check">{selected ? <Check size={14} strokeWidth={3} /> : <Plus size={15} />}</span></span>
+        <span className="vehicle-body"><span className="vehicle-brand">{vehicle.marque}</span><span className="vehicle-name">{vehicle.modele}</span>{vehicle.source === 'carapi' && <span className="vehicle-trim">{vehicle.description}</span>}<span className="vehicle-specs">{vehicle.annee || 'Année non renseignée'}<span>•</span>{vehicle.consommation_moyenne != null ? `${vehicle.consommation_moyenne.toLocaleString('fr-FR')} ${motorId === 'electrique' ? 'kWh' : 'L'}/100 km` : 'Consommation non renseignée'}</span><span className="vehicle-price-row"><span>{vehicle.source === 'carapi' ? 'Référence convertie' : 'Prix d’achat'}<strong>{vehicle.prix_achat != null ? `${vehicle.prix_achat.toLocaleString('fr-FR')} €` : 'Non renseigné'}</strong></span><span className={`vehicle-select-label ${selected ? 'selected' : ''}`}>{vehicle.simulable === false ? 'Non comparable' : selected ? <><Check size={12} /> Sélectionné</> : <>Comparer <Plus size={12} /></>}</span></span>{vehicle.source === 'carapi' && <span className="vehicle-source-price">{vehicle.msrp_usd ? `MSRP ${vehicle.annee} : ${vehicle.msrp_usd.toLocaleString('fr-FR')} $ US` : 'MSRP indisponible'}{vehicle.indisponibilite && <span>{vehicle.indisponibilite}</span>}</span>}</span>
+      </button>;
+    })}</div> : <div className="empty-catalog"><Search size={29} /><h3>{vehicles.length ? 'Aucun modèle trouvé' : 'Le catalogue est vide'}</h3><p>{vehicles.length ? 'Essayez une autre recherche ou une autre motorisation.' : 'Rechargez le catalogue pour retrouver les véhicules disponibles.'}</p>{vehicles.length > 0 && <button className="button button-outline" onClick={() => { setQuery(''); setFilter('all'); }}>Afficher tous les véhicules</button>}</div>}
+    {meta && <CarApiPagination meta={meta} loading={loading} query={catalogQuery} onBrowse={browse} />}
+    <div className="catalog-caption"><span>{isMock ? 'Illustrations générées, non contractuelles.' : 'Photos documentées ajoutées progressivement · finition et couleur peuvent différer.'}</span><span>{filtered.length} véhicule{filtered.length > 1 ? 's' : ''} affiché{filtered.length > 1 ? 's' : ''}</span></div>
+    {photos.length > 0 && <details className="photo-credits"><summary>Sources et crédits des photos ({photos.length})</summary><p>Photos de modèles de 2018, utilisées pour illustrer les générations 2018–2020. Elles ne représentent pas nécessairement la finition, les équipements ou la couleur sélectionnés. Miniatures Wikimedia, sans retouche, hébergées localement.</p><ul>{photos.map(photo => <li key={photo.src}><a href={photo.source} target="_blank" rel="noreferrer">{photo.title}</a> — {photo.author} · <a href={photo.licenseUrl} target="_blank" rel="noreferrer">{photo.license}</a></li>)}</ul></details>}
+  </section>;
 }

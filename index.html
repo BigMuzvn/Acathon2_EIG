@@ -2,10 +2,22 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚗</text></svg>" />
+    <script>
+      // Run before rendering so a reload cannot restore an old scroll position or section.
+      if (performance.getEntriesByType('navigation')[0]?.type === 'reload') {
+        history.scrollRestoration = 'manual';
+        if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        window.addEventListener('pageshow', () => {
+          window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        }, { once: true });
+      }
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="AutoCompare TCO - Simulateur et comparateur de coût total de possession automobile consommant l'API carapi.app" />
-    <title>AutoCompare TCO | Simulateur & Comparateur Automobile</title>
+    <meta name="description" content="Comparez le vrai coût de votre prochaine voiture : énergie, entretien, assurance et décote. Une estimation adaptée à votre quotidien, sans inscription." />
+    <meta name="theme-color" content="#263b2d" />
+    <title>AutoCompare — Votre prochaine voiture. Le vrai coût.</title>
   </head>
   <body>
     <div id="root"></div>

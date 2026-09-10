@@ -1,134 +1,86 @@
-import React from 'react';
+﻿import { BadgeCheck, ArrowLeftRight } from 'lucide-react';
+import './results.css';
+import { vehicleLabel } from '../../shared/vehicleLabel.js';
 
-export default function ComparisonTable({ results, vehicles }) {
-  if (!results || results.length === 0) return null;
+const formatCost = (value, digits = 0) => value == null ? '—' : `${Number(value).toLocaleString('fr-FR', { maximumFractionDigits: digits })} €`;
+const ENGINES = { essence: 'Essence', electrique: 'Électrique', hybride: 'Hybride', diesel: 'Diesel' };
+const DETAILS = [
+  ['carburant', 'Énergie', 'Carburant ou électricité'],
+  ['entretien', 'Entretien', 'Révisions et maintenance'],
+  ['assurance', 'Assurance', 'Couverture du véhicule'],
+  ['decote_estimee', 'Décote estimée', 'Perte de valeur du véhicule'],
+  ['autres', 'Autres frais', 'Dépenses annexes'],
+];
 
-  // Find min values for highlighting
-  const minTotal = Math.min(...results.map(r => r.cout_total));
-  const minMonthly = Math.min(...results.map(r => r.cout_mensuel_moyen));
-  const minKm = Math.min(...results.map(r => r.cout_par_km));
+export default function ComparisonTable({ results, vehicles, params }) {
+  if (!results?.length) return null;
+  const minimum = Math.min(...results.map(result => Number(result.cout_total)));
 
   return (
-    <section className="glass-card p-6 md:p-8 mb-8 border-slate-200 shadow-xs overflow-hidden">
-      
-      {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
-        <div className="flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white text-sm font-black flex items-center justify-center shrink-0 font-mono shadow-xs">
-            4
-          </div>
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-              Tableau Récapitulatif
-            </h2>
-            <p className="text-xs md:text-sm text-slate-600 mt-0.5">
-              Comparatif complet des coûts globaux, mensuels et au kilomètre.
-            </p>
-          </div>
+    <section className="result-card comparison-card" aria-labelledby="comparison-heading">
+      <div className="result-card-header">
+        <div>
+          <span className="result-eyebrow">TOUS LES CHIFFRES</span>
+          <h3 id="comparison-heading">Le comparatif en détail</h3>
+          <p>Une même base de calcul, pour un choix éclairé.</p>
         </div>
+        <span className="comparison-highlight-key"><span />Coût total le plus faible</span>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[700px]">
+      <div className="comparison-scroll" tabIndex={0} role="region" aria-label="Tableau des coûts par véhicule, défilement horizontal disponible">
+        <table className="comparison-table">
+          <caption className="result-sr-only">Comparaison des coûts de possession{params?.duree_annees ? ` sur ${params.duree_annees} ans` : ''}. Les dépenses par poste sont comprises dans le coût total.</caption>
           <thead>
-            <tr className="border-b border-slate-200 text-xs font-bold uppercase tracking-wider text-slate-600 bg-slate-50">
-              <th className="py-4 px-4 rounded-tl-xl">Véhicule</th>
-              <th className="py-4 px-4">Motorisation</th>
-              <th className="py-4 px-4 text-right">Coût Total (TCO)</th>
-              <th className="py-4 px-4 text-right">Coût Mensuel</th>
-              <th className="py-4 px-4 text-right">Coût au km</th>
-              <th className="py-4 px-4 text-right">Énergie</th>
-              <th className="py-4 px-4 text-right">Entretien</th>
-              <th className="py-4 px-4 text-right rounded-tr-xl">Décote Est.</th>
+            <tr>
+              <th scope="col" className="comparison-label-heading">
+                <span>Votre sélection</span>
+                <small>{results.length} véhicule{results.length > 1 ? 's' : ''} comparé{results.length > 1 ? 's' : ''}</small>
+              </th>
+              {results.map(result => {
+                const vehicle = vehicles.find(item => String(item.id) === String(result.vehicule_id));
+                const isBest = Number(result.cout_total) === minimum;
+                return (
+                  <th key={result.vehicule_id} scope="col" className={isBest ? 'comparison-best' : ''}>
+                    <span className="comparison-brand">{vehicle?.marque || 'Véhicule'}</span>
+                    <span className="comparison-model">{vehicle?.modele || result.vehicule_id}{vehicle?.source === 'carapi' && ` · ${vehicle.annee}`}</span>
+                    {vehicle?.description && <span className="comparison-variant" title={vehicleLabel(vehicle)}>{vehicle.description}</span>}
+                    <span className="comparison-engine">{ENGINES[vehicle?.motorisation] || vehicle?.motorisation || 'Motorisation non précisée'}</span>
+                    {isBest && <span className="comparison-best-badge"><BadgeCheck size={12} aria-hidden="true" />Coût le plus bas</span>}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 text-sm font-sans">
-            {results.map(res => {
-              const veh = vehicles.find(v => v.id === res.vehicule_id) || {
-                marque: 'Inconnu',
-                modele: res.vehicule_id,
-                motorisation: 'inconnu'
-              };
-
-              const isBestTotal = res.cout_total === minTotal;
-              const isBestMonthly = res.cout_mensuel_moyen === minMonthly;
-              const isBestKm = res.cout_par_km === minKm;
-
-              return (
-                <tr
-                  key={res.vehicule_id}
-                  className={`hover:bg-slate-50 transition-colors ${
-                    isBestTotal ? 'bg-emerald-50/70' : ''
-                  }`}
-                >
-                  {/* Vehicle info */}
-                  <td className="py-4 px-4">
-                    <div>
-                      <div className="font-bold text-slate-900 flex items-center gap-2">
-                        <span>{veh.marque} {veh.modele}</span>
-                        {isBestTotal && (
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2.5 py-0.5 rounded-full border border-emerald-300 font-bold">
-                            Meilleur TCO
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs text-slate-500 block mt-0.5 font-mono">
-                        Prix : {veh.prix_achat ? veh.prix_achat.toLocaleString('fr-FR') + ' €' : 'N/A'}
-                      </span>
-                    </div>
-                  </td>
-
-                  {/* Motorisation */}
-                  <td className="py-4 px-4 capitalize text-xs">
-                    <span className={`px-3 py-1 rounded-lg border font-bold ${
-                      veh.motorisation === 'electrique'
-                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                        : 'bg-amber-50 text-amber-800 border-amber-200'
-                    }`}>
-                      {veh.motorisation}
-                    </span>
-                  </td>
-
-                  {/* Total Cost */}
-                  <td className="py-4 px-4 text-right">
-                    <span className={`font-mono font-extrabold text-base ${isBestTotal ? 'text-emerald-700' : 'text-slate-900'}`}>
-                      {res.cout_total.toLocaleString('fr-FR')} €
-                    </span>
-                  </td>
-
-                  {/* Monthly Cost */}
-                  <td className="py-4 px-4 text-right">
-                    <span className={`font-mono font-bold ${isBestMonthly ? 'text-emerald-700' : 'text-slate-700'}`}>
-                      {res.cout_mensuel_moyen.toLocaleString('fr-FR')} € / mois
-                    </span>
-                  </td>
-
-                  {/* Cost per KM */}
-                  <td className="py-4 px-4 text-right">
-                    <span className={`font-mono font-bold ${isBestKm ? 'text-emerald-700' : 'text-slate-700'}`}>
-                      {res.cout_par_km} € / km
-                    </span>
-                  </td>
-
-                  {/* Energy */}
-                  <td className="py-4 px-4 text-right font-mono text-slate-600 text-xs">
-                    {res.detail?.carburant?.toLocaleString('fr-FR')} €
-                  </td>
-
-                  {/* Maintenance */}
-                  <td className="py-4 px-4 text-right font-mono text-slate-600 text-xs">
-                    {res.detail?.entretien?.toLocaleString('fr-FR')} €
-                  </td>
-
-                  {/* Depreciation */}
-                  <td className="py-4 px-4 text-right font-mono text-slate-600 text-xs">
-                    {res.detail?.decote_estimee?.toLocaleString('fr-FR')} €
-                  </td>
-                </tr>
-              );
-            })}
+          <tbody>
+            {results.some(result => result.hypotheses_appliquees) && <>
+              <tr><th scope="row">Base d’achat<small>Prix saisi ou référence indicative</small></th>{results.map(result => <td key={result.vehicule_id}>{formatCost(result.hypotheses_appliquees?.prix_achat)}<small>{result.hypotheses_appliquees?.personnalises.includes('prix_achat') ? 'Prix personnalisé' : 'Référence'}</small></td>)}</tr>
+              <tr><th scope="row">Revente estimée<small>En fin de possession ; déduite de l’achat pour calculer la décote</small></th>{results.map(result => <td key={result.vehicule_id}>{formatCost(result.hypotheses_appliquees?.valeur_revente)}<small>{result.hypotheses_appliquees?.personnalises.includes('valeur_revente') ? 'Valeur personnalisée' : 'Décote de 10 % par an'}</small></td>)}</tr>
+            </>}
+            <tr className="comparison-total-row">
+              <th scope="row">Coût total estimé<small>{params?.duree_annees ? `Sur ${params.duree_annees} ${params.duree_annees === 1 ? 'an' : 'ans'} de possession` : 'Sur toute la période'}</small></th>
+              {results.map(result => <td key={result.vehicule_id} className={Number(result.cout_total) === minimum ? 'comparison-best' : ''}>{formatCost(result.cout_total)}</td>)}
+            </tr>
+            <tr className="comparison-summary-row">
+              <th scope="row">Budget mensuel<small>Moyenne sur la période</small></th>
+              {results.map(result => <td key={result.vehicule_id} className={Number(result.cout_total) === minimum ? 'comparison-best' : ''}>{formatCost(result.cout_mensuel_moyen)}<small> / mois</small></td>)}
+            </tr>
+            <tr className="comparison-summary-row">
+              <th scope="row">Coût au kilomètre</th>
+              {results.map(result => <td key={result.vehicule_id} className={Number(result.cout_total) === minimum ? 'comparison-best' : ''}>{formatCost(result.cout_par_km, 2)}<small> / km</small></td>)}
+            </tr>
+            <tr className="comparison-divider"><th colSpan={results.length + 1} scope="colgroup">Détail des dépenses sur la période</th></tr>
+            {DETAILS.map(([key, label, description]) => (
+              <tr key={key}>
+                <th scope="row">{label}<small>{description}</small></th>
+                {results.map(result => <td key={result.vehicule_id} className={Number(result.cout_total) === minimum ? 'comparison-best' : ''}>{formatCost(result.detail?.[key])}</td>)}
+              </tr>
+            ))}
           </tbody>
         </table>
+      </div>
+      <div className="comparison-footer">
+        <p>Le coût total intègre l’énergie, l’entretien, l’assurance, la décote et les autres frais.</p>
+        <span className="comparison-scroll-hint"><ArrowLeftRight size={14} aria-hidden="true" />Faites défiler pour comparer</span>
       </div>
     </section>
   );

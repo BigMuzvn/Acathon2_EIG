@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://carapi.app/api';
+import { ADJUSTMENT_LIMITS, calculateTco, validateParameters } from '../../shared/tco.js';
+
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '');
 
 // Mock catalog for offline/fallback mode if real API is down or CORS blocked
 const MOCK_VEHICLES = [
@@ -64,184 +66,209 @@ const MOCK_VEHICLES = [
   }
 ];
 
-/**
- * Fetch available vehicles list
- */
-export async function getVehicules() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/vehicules`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
+const COST_FIELDS = ['carburant', 'entretien', 'assurance', 'decote_estimee', 'autres'];
 
-    if (!res.ok) {
-      if (res.status === 500) {
-        throw { status: 500, message: "Erreur serveur API. Impossible de charger la liste des véhicules." };
-      }
-      throw { status: res.status, message: `Erreur API (${res.status}) lors du chargement des véhicules.` };
-    }
+function apiError(status, message, extra = {}) {
+  return Object.assign(new Error(message), { status, ...extra });
+}
 
-    const data = await res.json();
-    return { data, isMock: false };
-  } catch (err) {
-    console.warn("API CarAPI non disponible ou bloquée CORS, bascule sur les données locales:", err);
-    // Return mock with fallback indicator
-    return { data: MOCK_VEHICLES, isMock: true, warning: err.message || "Mode hors-ligne / fallback actif" };
+function checkAborted(signal) {
+  if (signal?.aborted) {
+    throw signal.reason || new DOMException('La requête a été annulée.', 'AbortError');
   }
 }
 
-/**
- * Fetch single vehicle by ID
- */
-export async function getVehiculeById(id) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/vehicules/${id}`);
-    if (res.status === 404) {
-      throw { status: 404, message: `Le véhicule avec l'ID ${id} est introuvable.` };
-    }
-    if (!res.ok) {
-      throw { status: res.status, message: "Impossible de récupérer les détails du véhicule." };
-    }
-    return await res.json();
-  } catch (err) {
-    if (err.status === 404) throw err;
-    const mock = MOCK_VEHICLES.find(v => v.id === id);
-    if (!mock) throw { status: 404, message: `Le véhicule ${id} n'existe pas.` };
-    return mock;
-  }
+function isAbortError(error, signal) {
+  return signal?.aborted || error?.name === 'AbortError';
 }
 
-/**
- * Run simulation with parameters validation & calculation
- */
-export async function runSimulation(payload) {
-  const { vehicule_ids, kilometrage_annuel, duree_annees, region } = payload;
+function nonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
 
-  // Frontend validation for code 400
-  if (!vehicule_ids || vehicule_ids.length === 0) {
-    throw { status: 400, message: "Veuillez sélectionner au moins un véhicule." };
+function nonNegativeNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
+}
+
+function validVehicle(vehicle) {
+  return vehicle && nonEmptyString(vehicle.id) && nonEmptyString(vehicle.marque)
+    && nonEmptyString(vehicle.modele) && nonEmptyString(vehicle.motorisation)
+    && ((vehicle.source === 'carapi' && vehicle.simulable === false
+      && (vehicle.prix_achat === null || nonNegativeNumber(vehicle.prix_achat))
+      && (vehicle.consommation_moyenne === null || nonNegativeNumber(vehicle.consommation_moyenne)))
+      || (nonNegativeNumber(vehicle.prix_achat) && nonNegativeNumber(vehicle.consommation_moyenne)));
+}
+
+function invalidResponse(message) {
+  return apiError(502, message || 'La réponse du service est incomplète. Veuillez réessayer.');
+}
+
+function validateCatalogue(data) {
+  if (!Array.isArray(data) || !data.every(validVehicle)
+    || new Set(data.map(vehicle => vehicle.id)).size !== data.length) {
+    throw invalidResponse('Le catalogue reçu est invalide. Veuillez réessayer.');
   }
+  return data;
+}
 
-  if (kilometrage_annuel <= 0 || isNaN(kilometrage_annuel)) {
-    throw { status: 400, message: "Le kilométrage annuel doit être supérieur à 0." };
+function validateSimulation(data, vehicleIds) {
+  const results = data?.resultats;
+  if (!Array.isArray(results) || results.length !== vehicleIds.length) {
+    throw invalidResponse();
   }
-
-  if (duree_annees <= 0 || duree_annees > 15 || isNaN(duree_annees)) {
-    throw { status: 400, message: "La durée de possession doit être comprise entre 1 et 15 ans." };
+  const receivedIds = new Set();
+  for (const result of results) {
+    if (!result || !vehicleIds.includes(result.vehicule_id) || receivedIds.has(result.vehicule_id)
+      || !['cout_total', 'cout_mensuel_moyen', 'cout_par_km'].every(key => nonNegativeNumber(result[key]))
+      || !COST_FIELDS.every(key => nonNegativeNumber(result.detail?.[key]))
+      || !Array.isArray(result.evolution_annuelle) || result.evolution_annuelle.length === 0
+      || !result.evolution_annuelle.every(point => point && Number.isInteger(point.annee)
+        && point.annee >= 0 && nonNegativeNumber(point.cout_cumule))) {
+      throw invalidResponse();
+    }
+    const applied = result.hypotheses_appliquees;
+    if (applied !== undefined && (!applied
+      || !Object.keys(ADJUSTMENT_LIMITS).every(key => nonNegativeNumber(applied[key]))
+      || !Array.isArray(applied.personnalises) || !applied.personnalises.every(key => Object.hasOwn(ADJUSTMENT_LIMITS, key))
+      || !['annuelle_10_pourcent', 'lineaire_jusqua_revente'].includes(applied.methode_decote))) throw invalidResponse();
+    receivedIds.add(result.vehicule_id);
   }
+  return data;
+}
 
+function missingIdsFrom(body, requestedIds) {
+  const value = body?.missing_vehicle_ids ?? body?.missing_vehicule_ids
+    ?? body?.unknown_vehicle_ids ?? body?.vehicule_ids ?? body?.vehicleIds
+    ?? body?.vehicule_id ?? body?.vehicle_id;
+  const ids = Array.isArray(value) ? value : [value];
+  return [...new Set(ids.filter(id => nonEmptyString(id) && requestedIds.includes(id)))];
+}
+
+/** Keep HTTP errors distinct from network failures; only the latter allow a fallback. */
+async function requestJson(path, { signal, method = 'GET', body, vehicleIds = [] } = {}) {
+  checkAborted(signal);
+  const timeout = AbortSignal.timeout(75000);
+  const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
+  let response;
   try {
-    const res = await fetch(`${API_BASE_URL}/simulation`, {
-      method: 'POST',
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      signal: requestSignal,
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        Accept: 'application/json',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
-      body: JSON.stringify({ vehicule_ids, kilometrage_annuel, duree_annees, region })
+      ...(body ? { body: JSON.stringify(body) } : {}),
     });
+  } catch (error) {
+    if (isAbortError(error, signal)) throw error;
+    if (timeout.aborted) throw apiError(504, 'Le service met trop de temps à répondre. Réessayez.');
+    throw apiError(0, 'Connexion au service impossible. Vérifiez votre connexion puis réessayez.', { cause: error });
+  }
+  checkAborted(signal);
 
-    if (res.status === 400) {
-      const errorBody = await res.json().catch(() => ({}));
-      throw { status: 400, message: errorBody.message || "Paramètres de simulation invalides." };
-    }
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    if (isAbortError(error, signal)) throw error;
+    if (timeout.aborted) throw apiError(504, 'Le service met trop de temps à répondre. Réessayez.');
+    if (response.ok) throw invalidResponse('La réponse du service ne peut pas être lue. Veuillez réessayer.');
+  }
+  checkAborted(signal);
 
-    if (res.status === 404) {
-      throw { status: 404, message: "Un ou plusieurs véhicules de la sélection sont introuvables." };
-    }
+  if (!response.ok) {
+    const messages = {
+      400: 'Les paramètres envoyés sont invalides.',
+      404: 'Un ou plusieurs véhicules de la sélection sont introuvables.',
+      500: 'Le service rencontre une erreur. Veuillez réessayer dans un instant.',
+    };
+    throw apiError(response.status,
+      nonEmptyString(data?.message) ? data.message : messages[response.status] || `Erreur du service (${response.status}). Veuillez réessayer.`,
+      { vehicleIds: response.status === 404 ? missingIdsFrom(data, vehicleIds) : [],
+        ...(Number.isFinite(Number(data?.retry_after)) && Number(data.retry_after) > 0 ? { retryAfter: Number(data.retry_after) } : {}) });
+  }
+  return data;
+}
 
-    if (res.status === 500) {
-      throw { status: 500, message: "Erreur serveur lors du calcul de la simulation." };
-    }
+export async function getCatalogueOptions({ year, make = '', signal }) {
+  const query = new URLSearchParams({ year: String(year), make });
+  const data = await requestJson(`/catalogue-options?${query}`, { signal });
+  if (!data || !['makes', 'models'].every(key => Array.isArray(data[key]) && data[key].every(nonEmptyString))) throw invalidResponse();
+  return data;
+}
 
-    if (!res.ok) {
-      throw { status: res.status, message: "Erreur lors de l'exécution de la simulation." };
-    }
+function localVehicle(id) {
+  const vehicle = MOCK_VEHICLES.find(item => item.id === id);
+  if (!vehicle) {
+    throw apiError(404, 'Ce véhicule n’est pas disponible dans le catalogue de démonstration.', { vehicleIds: [id] });
+  }
+  return { ...vehicle };
+}
 
-    const data = await res.json();
-    return { data, isMock: false };
-
-  } catch (err) {
-    if (err.status) throw err;
-
-    // Fallback Mock simulation calculation according to realistic financial formulas
-    console.warn("Calcul local de secours exécuté pour la simulation:", err);
-
-    const resultats = vehicule_ids.map(id => {
-      const veh = MOCK_VEHICLES.find(v => v.id === id) || {
-        id,
-        marque: "Véhicule",
-        modele: id,
-        motorisation: "essence",
-        prix_achat: 25000,
-        consommation_moyenne: 6.0
-      };
-
-      const totalKm = kilometrage_annuel * duree_annees;
-      const isElectric = veh.motorisation === "electrique";
-      const isHybrid = veh.motorisation === "hybride";
-      const isDiesel = veh.motorisation === "diesel";
-
-      // Price per L or kWh based on region multiplier
-      const regionMultiplier = region === "CH" ? 1.25 : region === "DE" ? 1.15 : 1.0;
-
-      let energyCostPer100 = 0;
-      if (isElectric) {
-        energyCostPer100 = veh.consommation_moyenne * 0.25 * regionMultiplier; // kWh * ~0.25€
-      } else if (isHybrid) {
-        energyCostPer100 = veh.consommation_moyenne * 1.75 * regionMultiplier;
-      } else if (isDiesel) {
-        energyCostPer100 = veh.consommation_moyenne * 1.70 * regionMultiplier;
-      } else {
-        energyCostPer100 = veh.consommation_moyenne * 1.85 * regionMultiplier;
-      }
-
-      const totalCarburant = Math.round((totalKm / 100) * energyCostPer100);
-      const totalEntretien = Math.round(duree_annees * (isElectric ? 450 : 700));
-      const totalAssurance = Math.round(duree_annees * (isElectric ? 850 : 980));
-      
-      // Depreciation (décote)
-      const decotePercent = isElectric ? 0.45 : 0.40;
-      const totalDecote = Math.round(veh.prix_achat * (1 - Math.pow(1 - decotePercent / duree_annees, duree_annees)));
-      const totalAutres = Math.round(duree_annees * 300); // péages, entretien pneus...
-
-      const coutTotal = totalCarburant + totalEntretien + totalAssurance + totalDecote + totalAutres;
-      const coutMensuelMoyen = Math.round(coutTotal / (duree_annees * 12));
-      const coutParKm = Number((coutTotal / totalKm).toFixed(2));
-
-      // Evolution par année
-      const evolution_annuelle = [];
-      let cumul = 0;
-      const annualBaseCost = (totalCarburant + totalEntretien + totalAssurance + totalAutres) / duree_annees;
-
-      for (let y = 1; y <= duree_annees; y++) {
-        const annualDecote = totalDecote * (1 / duree_annees);
-        cumul += Math.round(annualBaseCost + annualDecote);
-        evolution_annuelle.push({
-          annee: y,
-          cout_cumule: cumul
-        });
-      }
-
-      return {
-        vehicule_id: veh.id,
-        cout_total: coutTotal,
-        cout_mensuel_moyen: coutMensuelMoyen,
-        cout_par_km: coutParKm,
-        detail: {
-          carburant: totalCarburant,
-          entretien: totalEntretien,
-          assurance: totalAssurance,
-          decote_estimee: totalDecote,
-          autres: totalAutres
-        },
-        evolution_annuelle
-      };
-    });
-
+/** A local catalogue is only returned on network failure, never for an HTTP error. */
+export async function getVehicules({ signal, allowFallback = true, query } = {}) {
+  try {
+    const search = new URLSearchParams(query || {}).toString();
+    const response = await requestJson(`/vehicules${search ? `?${search}` : ''}`, { signal });
+    const data = validateCatalogue(Array.isArray(response) ? response : response?.data);
+    return { data, isMock: false, ...(response?.meta ? { meta: response.meta } : {}) };
+  } catch (error) {
+    if (isAbortError(error, signal) || !allowFallback || error.status !== 0) throw error;
     return {
-      data: { resultats },
+      data: MOCK_VEHICLES.map(vehicle => ({ ...vehicle })),
       isMock: true,
-      warning: "Résultats générés via l'algorithme de simulation local (API inaccessible)"
+      warning: 'Connexion au service indisponible. Le catalogue de démonstration est affiché.',
     };
   }
+}
+
+export async function getVehiculeById(id, { signal, source = 'api', allowFallback = false } = {}) {
+  checkAborted(signal);
+  if (!nonEmptyString(id)) throw apiError(400, 'L’identifiant du véhicule est invalide.');
+  if (source === 'local') return localVehicle(id);
+  try {
+    const data = await requestJson(`/vehicules/${encodeURIComponent(id)}`, { signal, vehicleIds: [id] });
+    if (!validVehicle(data) || data.id !== id) throw invalidResponse();
+    return data;
+  } catch (error) {
+    if (isAbortError(error, signal)) throw error;
+    if (error.status === 404) error.vehicleIds = [id];
+    if (!allowFallback || error.status !== 0) throw error;
+    return localVehicle(id);
+  }
+}
+
+/**
+ * Keep the source consistent with the catalogue: a local catalogue must use source: 'local'.
+ * Live simulations preserve server errors and never invent data for an unknown vehicle.
+ */
+export async function runSimulation(payload, { signal, source = 'api', allowFallback = false } = {}) {
+  checkAborted(signal);
+  const parameters = validateParameters(payload);
+  if (source === 'local') return simulateLocally(parameters);
+  try {
+    const data = validateSimulation(await requestJson('/simulation', {
+      method: 'POST', signal, body: parameters, vehicleIds: parameters.vehicule_ids,
+    }), parameters.vehicule_ids);
+    return { data, isMock: false };
+  } catch (error) {
+    if (isAbortError(error, signal) || !allowFallback || error.status !== 0) throw error;
+    return simulateLocally(parameters);
+  }
+}
+
+/** The offline sample uses the same cost assumptions as our application server. */
+function simulateLocally(parameters) {
+  const { vehicule_ids } = parameters;
+  const missingIds = vehicule_ids.filter(id => !MOCK_VEHICLES.some(vehicle => vehicle.id === id));
+  if (missingIds.length) {
+    throw apiError(404, 'Certains véhicules ne sont pas disponibles dans le catalogue de démonstration.', { vehicleIds: missingIds });
+  }
+  const resultats = calculateTco(vehicule_ids.map(localVehicle), parameters);
+  return {
+    data: { resultats },
+    isMock: true,
+    warning: 'Estimation de démonstration calculée localement à partir d’hypothèses indicatives.',
+  };
 }

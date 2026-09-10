@@ -1,165 +1,137 @@
-import React, { useState } from 'react';
+﻿import { useId, useState } from 'react';
 import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  CartesianGrid,
-  LineChart,
-  Line
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip,
+  CartesianGrid, LineChart, Line,
 } from 'recharts';
-import { TrendingUp, Layers } from 'lucide-react';
+import { ChartNoAxesCombined, ChartNoAxesColumnIncreasing } from 'lucide-react';
+import './results.css';
+import { vehicleLabel } from '../../shared/vehicleLabel.js';
 
-export default function CostCharts({ results, vehicles }) {
-  const [activeTab, setActiveTab] = useState('breakdown'); // 'breakdown' | 'evolution'
+const COSTS = [
+  { key: 'carburant', label: 'Énergie', color: '#263b2d' },
+  { key: 'entretien', label: 'Entretien', color: '#8dad6e' },
+  { key: 'assurance', label: 'Assurance', color: '#c4ed63' },
+  { key: 'decote_estimee', label: 'Décote', color: '#8eaaa9' },
+  { key: 'autres', label: 'Autres frais', color: '#d7dddb' },
+];
+const VEHICLE_COLORS = ['#263b2d', '#87a846', '#547e99', '#b47954', '#83709d', '#89979b'];
+const TABS = ['breakdown', 'evolution'];
+const currency = (value) => Number(value).toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+const tickCurrency = (value) => `${Number(value) >= 1000 ? `${Number(value / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} k` : currency(value)} €`;
 
-  if (!results || results.length === 0) return null;
-
-  // Prepare Breakdown Data for Stacked Bar Chart
-  const breakdownData = results.map(res => {
-    const veh = vehicles.find(v => v.id === res.vehicule_id) || { marque: '', modele: res.vehicule_id };
-    return {
-      name: `${veh.marque} ${veh.modele}`,
-      carburant: res.detail?.carburant || 0,
-      entretien: res.detail?.entretien || 0,
-      assurance: res.detail?.assurance || 0,
-      decote: res.detail?.decote_estimee || 0,
-      autres: res.detail?.autres || 0,
-      total: res.cout_total
-    };
-  });
-
-  // Prepare Evolution Data for Line Chart
-  const maxYears = results[0]?.evolution_annuelle?.length || 5;
-  const evolutionData = [];
-
-  for (let i = 0; i < maxYears; i++) {
-    const yearNumber = i + 1;
-    const dataPoint = { year: `Année ${yearNumber}` };
-
-    results.forEach(res => {
-      const veh = vehicles.find(v => v.id === res.vehicule_id) || { marque: '', modele: res.vehicule_id };
-      const label = `${veh.marque} ${veh.modele}`;
-      const yearStat = res.evolution_annuelle?.find(e => e.annee === yearNumber);
-      dataPoint[label] = yearStat ? yearStat.cout_cumule : 0;
-    });
-
-    evolutionData.push(dataPoint);
-  }
-
-  const COLORS = ['#0f172a', '#c2410c', '#059669', '#0891b2', '#7c3aed', '#d97706'];
-
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-lg text-xs font-sans text-slate-900">
-          <p className="font-bold text-slate-900 mb-2 border-b border-slate-100 pb-1.5 text-sm">{label}</p>
-          <div className="space-y-1.5">
-            {payload.map((entry, index) => (
-              <div key={index} className="flex items-center justify-between gap-4">
-                <span className="flex items-center gap-2 text-slate-700 font-medium" style={{ color: entry.color }}>
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }}></span>
-                  {entry.name} :
-                </span>
-                <span className="font-bold font-mono text-slate-900 text-xs">{entry.value.toLocaleString('fr-FR')} €</span>
-              </div>
-            ))}
-          </div>
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="chart-tooltip">
+      <strong>{payload[0]?.payload?.identity || label}</strong>
+      {payload.map((entry) => (
+        <div className="chart-tooltip-row" key={entry.dataKey}>
+          <span><i style={{ backgroundColor: entry.color }} />{entry.name}</span>
+          <b>{currency(entry.value)} €</b>
         </div>
-      );
-    }
-    return null;
+      ))}
+    </div>
+  );
+}
+
+export default function CostCharts({ results, vehicles, params }) {
+  const [activeTab, setActiveTab] = useState('breakdown');
+  const chartId = useId();
+  if (!results?.length) return null;
+
+  const series = results.map((result, index) => {
+    const vehicle = vehicles.find(item => String(item.id) === String(result.vehicule_id));
+    const name = vehicle ? vehicleLabel(vehicle) : `Véhicule ${result.vehicule_id}`;
+    const axisName = vehicle?.source === 'carapi' ? `${index + 1}. ${vehicleLabel(vehicle, { details: false })}` : name;
+    return { result, key: `vehicle_${index}`, name, axisName, color: VEHICLE_COLORS[index % VEHICLE_COLORS.length] };
+  });
+  const breakdown = series.map(({ result, name, axisName }) => ({ name: axisName, identity: name, ...result.detail }));
+  const years = [...new Set(results.flatMap(result => (result.evolution_annuelle || []).map(item => Number(item.annee))))].sort((a, b) => a - b);
+  const evolution = years.map(year => {
+    const row = { year: `Année ${year}` };
+    series.forEach(({ result, key }) => {
+      const entry = result.evolution_annuelle?.find(item => Number(item.annee) === year);
+      row[key] = entry?.cout_cumule ?? null;
+    });
+    return row;
+  });
+  const isBreakdown = activeTab === 'breakdown';
+  const legend = isBreakdown ? COSTS : series.map(item => ({ key: item.key, label: item.name, color: item.color }));
+
+  const handleTabKey = (event) => {
+    if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? 1 : (TABS.indexOf(activeTab) + 1) % 2;
+    setActiveTab(TABS[next]);
+    event.currentTarget.parentElement.querySelectorAll('[role="tab"]')[next]?.focus();
   };
 
   return (
-    <section className="glass-card p-6 md:p-8 mb-8 border-slate-200 shadow-xs">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-200">
-        <div className="flex items-center gap-3.5">
-          <div className="w-9 h-9 rounded-xl bg-slate-900 text-white text-sm font-black flex items-center justify-center shrink-0 font-mono shadow-xs">
-            3
-          </div>
-          <div>
-            <h2 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
-              Analyse visuelle des coûts
-            </h2>
-            <p className="text-xs md:text-sm text-slate-600 mt-0.5">
-              Observez la répartition détaillée des dépenses et la projection sur plusieurs années.
-            </p>
-          </div>
+    <section className="result-card chart-card" aria-labelledby={`${chartId}-heading`}>
+      <div className="result-card-header">
+        <div>
+          <span className="result-eyebrow">COMPRENDRE VOTRE BUDGET</span>
+          <h3 id={`${chartId}-heading`}>Où va votre argent ?</h3>
+          <p>{isBreakdown ? 'Chaque poste de dépense, pour chaque véhicule.' : 'Le coût de possession cumulé au fil des années.'}</p>
         </div>
-
-        {/* Tab switcher */}
-        <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 shrink-0">
-          <button
-            onClick={() => setActiveTab('breakdown')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 ${
-              activeTab === 'breakdown'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            Répartition par poste
-          </button>
-          <button
-            onClick={() => setActiveTab('evolution')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 ${
-              activeTab === 'evolution'
-                ? 'bg-slate-900 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <TrendingUp className="w-4 h-4" />
-            Évolution annuelle
-          </button>
+        <div className="chart-tabs" role="tablist" aria-label="Affichage du graphique">
+          {TABS.map((tab, index) => (
+            <button
+              type="button"
+              key={tab}
+              id={`${chartId}-${tab}-tab`}
+              role="tab"
+              aria-selected={activeTab === tab}
+              aria-controls={`${chartId}-panel`}
+              tabIndex={activeTab === tab ? 0 : -1}
+              onKeyDown={handleTabKey}
+              onClick={() => setActiveTab(tab)}
+            >
+              {index === 0 ? <ChartNoAxesColumnIncreasing size={15} aria-hidden="true" /> : <ChartNoAxesCombined size={15} aria-hidden="true" />}
+              {index === 0 ? 'Répartition' : 'Évolution'}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Chart Canvas */}
-      <div className="h-[420px] w-full pt-4">
-        <ResponsiveContainer width="100%" height="100%">
-          {activeTab === 'breakdown' ? (
-            <BarChart data={breakdownData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} dy={10} />
-              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => `${v / 1000}k €`} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
-              <Bar dataKey="carburant" name="Carburant / Électricité" stackId="a" fill="#059669" />
-              <Bar dataKey="entretien" name="Entretien" stackId="a" fill="#c2410c" />
-              <Bar dataKey="assurance" name="Assurance" stackId="a" fill="#7c3aed" />
-              <Bar dataKey="decote" name="Décote estimée" stackId="a" fill="#0891b2" />
-              <Bar dataKey="autres" name="Autres frais" stackId="a" fill="#64748b" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          ) : (
-            <LineChart data={evolutionData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="year" stroke="#64748b" fontSize={12} tickLine={false} dy={10} />
-              <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => `${v / 1000}k €`} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
-              {results.map((res, index) => {
-                const veh = vehicles.find(v => v.id === res.vehicule_id) || { marque: '', modele: res.vehicule_id };
-                const name = `${veh.marque} ${veh.modele}`;
-                return (
-                  <Line
-                    key={res.vehicule_id}
-                    type="monotone"
-                    dataKey={name}
-                    stroke={COLORS[index % COLORS.length]}
-                    strokeWidth={3}
-                    dot={{ r: 5, fill: COLORS[index % COLORS.length], strokeWidth: 2, stroke: '#ffffff' }}
-                    activeDot={{ r: 8 }}
-                  />
-                );
-              })}
-            </LineChart>
-          )}
-        </ResponsiveContainer>
+      <div id={`${chartId}-panel`} role="tabpanel" aria-labelledby={`${chartId}-${activeTab}-tab`} tabIndex={0} className="chart-panel">
+        <div className="chart-meta">
+          <ul className="chart-legend" aria-label="Légende du graphique">
+            {legend.map(item => <li key={item.key}><span style={{ backgroundColor: item.color }} />{item.label}</li>)}
+          </ul>
+          <span className="chart-period">{isBreakdown && params?.duree_annees ? `Total sur ${params.duree_annees} ${params.duree_annees === 1 ? 'an' : 'ans'}` : 'Montants en euros'}</span>
+        </div>
+
+        {!isBreakdown && !years.length ? (
+          <p className="chart-empty">L’évolution annuelle n’est pas disponible pour cette simulation. Retrouvez les montants dans le tableau ci-dessous.</p>
+        ) : (
+          <div className="chart-canvas" style={{ height: isBreakdown ? Math.max(260, results.length * 70 + 50) : 310 }}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              {isBreakdown ? (
+                <BarChart data={breakdown} layout="vertical" margin={{ top: 10, right: 14, bottom: 8, left: 0 }} accessibilityLayer>
+                  <CartesianGrid strokeDasharray="3 5" stroke="#e9ecea" horizontal={false} />
+                  <XAxis type="number" axisLine={false} tickLine={false} tick={{ fill: '#77817b', fontSize: 11 }} tickFormatter={tickCurrency} tickMargin={12} />
+                  <YAxis type="category" dataKey="name" width={130} axisLine={false} tickLine={false} tick={{ fill: '#344039', fontSize: 11, fontWeight: 500 }} tickMargin={12} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: '#f4f6f2' }} />
+                  {COSTS.map((cost, index) => (
+                    <Bar key={cost.key} dataKey={cost.key} name={cost.label} stackId="costs" fill={cost.color} maxBarSize={38} radius={index === COSTS.length - 1 ? [0, 5, 5, 0] : 0} isAnimationActive={false} />
+                  ))}
+                </BarChart>
+              ) : (
+                <LineChart data={evolution} margin={{ top: 15, right: 18, bottom: 8, left: 0 }} accessibilityLayer>
+                  <CartesianGrid strokeDasharray="3 5" stroke="#e9ecea" vertical={false} />
+                  <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#77817b', fontSize: 11 }} tickMargin={12} minTickGap={18} />
+                  <YAxis width={65} axisLine={false} tickLine={false} tick={{ fill: '#77817b', fontSize: 11 }} tickFormatter={tickCurrency} />
+                  <Tooltip content={<ChartTooltip />} />
+                  {series.map(item => (
+                    <Line key={item.key} name={item.name} dataKey={item.key} type="monotone" stroke={item.color} strokeWidth={3} dot={{ r: 3, stroke: '#fff', strokeWidth: 2 }} activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }} isAnimationActive={false} />
+                  ))}
+                </LineChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        )}
+        <p className="chart-footnote">La décote correspond à la perte de valeur estimée du véhicule. Tous les montants sont détaillés dans le comparatif.</p>
       </div>
     </section>
   );

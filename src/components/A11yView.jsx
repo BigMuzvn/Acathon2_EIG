@@ -1,66 +1,56 @@
-import React from 'react';
-import { Eye, FileText, CheckCircle2 } from 'lucide-react';
+﻿import { FileText } from 'lucide-react';
+import './results.css';
+import { vehicleLabel } from '../../shared/vehicleLabel.js';
+
+const number = (value, digits = 0) => value == null ? 'Non disponible' : Number(value).toLocaleString('fr-FR', { maximumFractionDigits: digits });
+const REGIONS = { FR: 'France', DE: 'Allemagne', CH: 'Suisse' };
+const ENGINES = { electrique: 'électrique', essence: 'essence', diesel: 'diesel', hybride: 'hybride' };
+const DETAILS = [['carburant', 'Énergie'], ['entretien', 'Entretien'], ['assurance', 'Assurance'], ['decote_estimee', 'Décote estimée'], ['autres', 'Autres frais']];
 
 export default function A11yView({ results, vehicles, params }) {
-  if (!results || results.length === 0) return null;
+  if (!results?.length) return null;
 
   return (
-    <section 
-      aria-label="Rapport d'accessibilité détaillé et restitution textuelle des données"
-      tabIndex={0}
-      className="glass-card p-6 mb-8 border border-indigo-500/30 bg-indigo-950/20 text-slate-200"
-    >
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-indigo-500/20">
-        <Eye className="w-6 h-6 text-indigo-400" />
+    <section className="result-card result-text-report" aria-labelledby="text-report-heading" tabIndex={0}>
+      <div className="result-card-header">
         <div>
-          <h2 className="text-xl font-bold text-white">Mode Alternative Textuelle / Accessibilité (A11y)</h2>
-          <p className="text-xs text-indigo-200">
-            Ce mode fournit une description textuelle complète des résultats de la simulation sans dépendre d'éléments visuels ou de graphiques.
-          </p>
+          <span className="result-eyebrow"><FileText size={14} aria-hidden="true" />RAPPORT TEXTUEL</span>
+          <h3 id="text-report-heading">Votre simulation, en toutes lettres</h3>
+          <p>Les mêmes résultats, dans un format de lecture sans graphiques.</p>
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-indigo-300 mb-2">1. Paramètres de la simulation actuelle</h3>
-          <ul className="list-disc list-inside text-sm space-y-1 text-slate-300">
-            <li>Kilométrage annuel simulé : <strong>{params.kilometrage_annuel.toLocaleString('fr-FR')} kilomètres</strong></li>
-            <li>Durée de possession choisie : <strong>{params.duree_annees} ans</strong> (soit {params.duree_annees * 12} mois)</li>
-            <li>Distance totale parcourue : <strong>{(params.kilometrage_annuel * params.duree_annees).toLocaleString('fr-FR')} km</strong></li>
-            <li>Zone géographique / Tarif énergie : <strong>Région {params.region}</strong></li>
-          </ul>
-        </div>
+      <div className="result-text-content">
+        <section className="result-text-parameters" aria-labelledby="text-parameters-heading">
+          <h4 id="text-parameters-heading">Les paramètres de votre simulation</h4>
+          <dl>
+            <div><dt>Kilométrage annuel</dt><dd>{number(params.kilometrage_annuel)} km</dd></div>
+            <div><dt>Durée de possession</dt><dd>{params.duree_annees} {params.duree_annees === 1 ? 'an' : 'ans'} ({params.duree_annees * 12} mois)</dd></div>
+            <div><dt>Distance totale</dt><dd>{number(params.kilometrage_annuel * params.duree_annees)} km</dd></div>
+            <div><dt>Pays de référence</dt><dd>{REGIONS[params.region] || params.region}</dd></div>
+          </dl>
+        </section>
 
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-indigo-300 mb-2">2. Restitution textuelle par véhicule</h3>
-          <div className="space-y-4">
-            {results.map((res, index) => {
-              const veh = vehicles.find(v => v.id === res.vehicule_id) || { marque: '', modele: res.vehicule_id, motorisation: 'non précisée' };
-              
-              return (
-                <div key={res.vehicule_id} className="p-4 bg-slate-900/80 rounded-xl border border-indigo-500/20">
-                  <h4 className="text-base font-bold text-white mb-2">
-                    {index + 1}. {veh.marque} {veh.modele} (Motorisation : {veh.motorisation})
-                  </h4>
-                  <p className="text-sm text-slate-300 mb-3 leading-relaxed">
-                    Le coût total estimé de possession (TCO) sur {params.duree_annees} ans s'élève à{' '}
-                    <strong className="text-emerald-400">{res.cout_total.toLocaleString('fr-FR')} €</strong>. 
-                    Cela équivaut à un coût moyen mensuel de <strong>{res.cout_mensuel_moyen} € par mois</strong>{' '}
-                    et un coût au kilomètre de <strong>{res.cout_par_km} € par km</strong>.
-                  </p>
-                  
-                  <div className="text-xs space-y-1 text-slate-400 pl-4 border-l-2 border-indigo-500/40">
-                    <p>• Budget Énergie (Carburant / Électricité) : {res.detail?.carburant?.toLocaleString('fr-FR')} €</p>
-                    <p>• Budget Entretien : {res.detail?.entretien?.toLocaleString('fr-FR')} €</p>
-                    <p>• Budget Assurance : {res.detail?.assurance?.toLocaleString('fr-FR')} €</p>
-                    <p>• Dépréciation / Décote estimée du véhicule : {res.detail?.decote_estimee?.toLocaleString('fr-FR')} €</p>
-                    <p>• Autres dépenses annexes : {res.detail?.autres?.toLocaleString('fr-FR')} €</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        {results.map((result, index) => {
+          const vehicle = vehicles.find(item => String(item.id) === String(result.vehicule_id));
+          const name = vehicle ? vehicleLabel(vehicle) : `Véhicule ${result.vehicule_id}`;
+          return (
+            <article key={result.vehicule_id} className="result-text-vehicle">
+              <span className="result-eyebrow">VÉHICULE {String(index + 1).padStart(2, '0')} · {ENGINES[vehicle?.motorisation] || vehicle?.motorisation || 'Motorisation non précisée'}</span>
+              <h4>{name}</h4>
+              <p>Sur {params.duree_annees} {params.duree_annees === 1 ? 'an' : 'ans'}, le coût de possession de ce véhicule est estimé à <strong>{number(result.cout_total)} €</strong>. Cela représente en moyenne <strong>{number(result.cout_mensuel_moyen)} € par mois</strong> et <strong>{number(result.cout_par_km, 2)} € par kilomètre</strong>.</p>
+              <dl className="result-text-costs">
+                {DETAILS.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{result.detail?.[key] == null ? 'Non disponible' : `${number(result.detail[key])} €`}</dd></div>)}
+              </dl>
+              {!!result.evolution_annuelle?.length && (
+                <details className="result-text-evolution">
+                  <summary>Coût cumulé année par année</summary>
+                  <ol>{[...result.evolution_annuelle].sort((a, b) => a.annee - b.annee).map(item => <li key={item.annee}>Année {item.annee} : <strong>{number(item.cout_cumule)} €</strong></li>)}</ol>
+                </details>
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );
