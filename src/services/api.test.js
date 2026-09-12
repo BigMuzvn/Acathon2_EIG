@@ -36,6 +36,22 @@ test('catalogue API: preserves the contract and forwards cancellation', async t 
   assert.equal(fetchMock.mock.callCount(), 1);
 });
 
+test('catalogue works when modern AbortSignal helpers are unavailable', async t => {
+  const originalAny = AbortSignal.any;
+  const originalTimeout = AbortSignal.timeout;
+  AbortSignal.any = undefined;
+  AbortSignal.timeout = undefined;
+  t.after(() => {
+    AbortSignal.any = originalAny;
+    AbortSignal.timeout = originalTimeout;
+  });
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    assert.ok(options.signal instanceof AbortSignal);
+    return jsonResponse([vehicle]);
+  });
+  assert.deepEqual(await getVehicules(), { data: [vehicle], isMock: false });
+});
+
 test('network fallback returns six isolated demo records and can be disabled', async t => {
   t.mock.method(globalThis, 'fetch', async () => { throw new TypeError('Failed to fetch'); });
   const first = await getVehicules();

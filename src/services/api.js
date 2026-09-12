@@ -82,6 +82,45 @@ function isAbortError(error, signal) {
   return signal?.aborted || error?.name === 'AbortError';
 }
 
+/**
+ * Safari on older iPhones supports AbortController but not AbortSignal.any()
+ * or AbortSignal.timeout(). Build the combined cancellation signal ourselves
+ * so catalogue requests work on those devices too.
+ */
+function createRequestSignal(sourceSignal, timeoutMs) {
+  const controller = new AbortController();
+  let timedOut = false;
+  let removeSourceListener = () => {};
+
+  const abort = reason => {
+    if (!controller.signal.aborted) controller.abort(reason);
+  };
+
+  const timer = setTimeout(() => {
+    timedOut = true;
+    abort(new DOMException('La requête a expiré.', 'TimeoutError'));
+  }, timeoutMs);
+
+  if (sourceSignal) {
+    if (sourceSignal.aborted) {
+      abort(sourceSignal.reason);
+    } else {
+      const onAbort = () => abort(sourceSignal.reason);
+      sourceSignal.addEventListener('abort', onAbort, { once: true });
+      removeSourceListener = () => sourceSignal.removeEventListener('abort', onAbort);
+    }
+  }
+
+  return {
+    signal: controller.signal,
+    didTimeout: () => timedOut,
+    cleanup: () => {
+      clearTimeout(timer);
+      removeSourceListener();
+    },
+  };
+}
+
 function nonEmptyString(value) {
   return typeof value === 'string' && value.trim().length > 0;
 }
@@ -147,48 +186,51 @@ function missingIdsFrom(body, requestedIds) {
 /** Keep HTTP errors distinct from network failures; only the latter allow a fallback. */
 async function requestJson(path, { signal, method = 'GET', body, vehicleIds = [] } = {}) {
   checkAborted(signal);
-  const timeout = AbortSignal.timeout(75000);
-  const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
-  let response;
+  const request = createRequestSignal(signal, 75000);
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      signal: requestSignal,
-      headers: {
-        Accept: 'application/json',
-        ...(body ? { 'Content-Type': 'application/json' } : {}),
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-  } catch (error) {
-    if (isAbortError(error, signal)) throw error;
-    if (timeout.aborted) throw apiError(504, 'Le service met trop de temps à répondre. Réessayez.');
-    throw apiError(0, 'Connexion au service impossible. Vérifiez votre connexion puis réessayez.', { cause: error });
-  }
-  checkAborted(signal);
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        method,
+        signal: request.signal,
+        headers: {
+          Accept: 'application/json',
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+    } catch (error) {
+      if (isAbortError(error, signal)) throw error;
+      if (request.didTimeout()) throw apiError(504, 'Le service met trop de temps à répondre. Réessayez.');
+      throw apiError(0, 'Connexion au service impossible. Vérifiez votre connexion puis réessayez.', { cause: error });
+    }
+    checkAborted(signal);
 
-  let data;
-  try {
-    data = await response.json();
-  } catch (error) {
-    if (isAbortError(error, signal)) throw error;
-    if (timeout.aborted) throw apiError(504, 'Le service met trop de temps à répondre. Réessayez.');
-    if (response.ok) throw invalidResponse('La réponse du service ne peut pas être lue. Veuillez réessayer.');
-  }
-  checkAborted(signal);
+    let data;
+    try {
+      data = await response.json();
+    } catch (error) {
+      if (isAbortError(error, signal)) throw error;
+      if (request.didTimeout()) throw apiError(504, 'Le service met trop de temps à répondre. Réessayez.');
+      if (response.ok) throw invalidResponse('La réponse du service ne peut pas être lue. Veuillez réessayer.');
+    }
+    checkAborted(signal);
 
-  if (!response.ok) {
-    const messages = {
-      400: 'Les paramètres envoyés sont invalides.',
-      404: 'Un ou plusieurs véhicules de la sélection sont introuvables.',
-      500: 'Le service rencontre une erreur. Veuillez réessayer dans un instant.',
-    };
-    throw apiError(response.status,
-      nonEmptyString(data?.message) ? data.message : messages[response.status] || `Erreur du service (${response.status}). Veuillez réessayer.`,
-      { vehicleIds: response.status === 404 ? missingIdsFrom(data, vehicleIds) : [],
-        ...(Number.isFinite(Number(data?.retry_after)) && Number(data.retry_after) > 0 ? { retryAfter: Number(data.retry_after) } : {}) });
+    if (!response.ok) {
+      const messages = {
+        400: 'Les paramètres envoyés sont invalides.',
+        404: 'Un ou plusieurs véhicules de la sélection sont introuvables.',
+        500: 'Le service rencontre une erreur. Veuillez réessayer dans un instant.',
+      };
+      throw apiError(response.status,
+        nonEmptyString(data?.message) ? data.message : messages[response.status] || `Erreur du service (${response.status}). Veuillez réessayer.`,
+        { vehicleIds: response.status === 404 ? missingIdsFrom(data, vehicleIds) : [],
+          ...(Number.isFinite(Number(data?.retry_after)) && Number(data.retry_after) > 0 ? { retryAfter: Number(data.retry_after) } : {}) });
+    }
+    return data;
+  } finally {
+    request.cleanup();
   }
-  return data;
 }
 
 export async function getCatalogueOptions({ year, make = '', signal }) {
